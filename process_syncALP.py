@@ -1,0 +1,403 @@
+from __future__ import division
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import gridspec
+import math as math
+from jet_fns import *
+import copy as copy
+
+#ROWS (x) are values for each electron bin
+#columns (y) are values for each jet section
+
+#N_ICbins = 50
+
+keydat = np.loadtxt('keyparams.txt')
+opdat = np.loadtxt('EBLOpacity.txt') #high energy gamma opacities for different z due to EBL
+
+#loading up data points for different blazars (need to change distances and redshift as well!!!)
+d_Blazar = 0.276E9*3.08E18 # pc in cm #276E6pc BL_Lac, 144E6 Mkn501, 131E6 Mkn421, 891E6 J2143
+z = 0.0686 #0.0686 BL-Lac, 0.034 Mkn501, 0.031 Mkn421, 0.211 J2143
+theta_obs=keydat[2]#2.8
+BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
+Mkn501_pts = np.loadtxt('MKN501.txt')
+ph_energy = BLLac_pts[:,0]
+flux_BL = BLLac_pts[:,1]
+ph_energy_MK = Mkn501_pts[:,0]
+flux_MK = Mkn501_pts[:,1]
+L_jet=keydat[0]#5.0E20
+gamma_bulk=keydat[1]#7.5#12.0
+beta_bulk=(1.0-(gamma_bulk**(-2.0)))**(0.5)
+doppler_factor = 1.0/(gamma_bulk*(1.0-beta_bulk*np.cos(np.deg2rad(theta_obs))))
+
+
+#define the bins
+frdata = np.loadtxt('freqrange.txt')*doppler_factor#*doppler_factor#*gamma_bulk*2.8
+fq_mins = frdata[:,0]
+fq_maxs = frdata[:,1]
+fq_mids = frdata[:,2]
+fq_mins_IC = frdata[:,4]
+fq_maxs_IC = frdata[:,5]
+fq_mids_IC = frdata[:,6]
+
+
+fcritdata = np.loadtxt('critfreqs.txt')*doppler_factor#*frequency gets doppler boosted from jet rest frame to observers frame!!!
+opdata = np.loadtxt('kvalues.txt')
+powdata = np.loadtxt('secpow.txt')*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0))#convert to flux in ergs
+basics = np.loadtxt('basicdata.txt')
+""" -------------------------------------"""
+ICpowdata = np.loadtxt('ICfile.txt')*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0))#convert to flux in ergs
+ICfreqdata = np.loadtxt('ICfreqfile.txt')*doppler_factor
+'''--------------------------------------'''
+##### Loading in Polarisation powers
+P_paraArray = np.loadtxt('Pparafile.txt')
+P_perpArray = np.loadtxt('Pperpfile.txt')
+Pol_single = np.loadtxt('Pol_single.txt') #for comparison
+### First calculate initial electron PL population polarisation to compare with full dynamic pop.
+Pol_Init = np.zeros(50)
+for i,ting in enumerate(P_perpArray[0,:]):
+    if (ting > 0 ) or (P_paraArray[0,i]>0):
+        Pol_Init[i] = (ting - P_paraArray[0,i])/(ting + P_paraArray[0,i])
+    else:
+        Pol_Init[i] = 1.0
+### Then polarisation for each frequency interval for whole jet emission
+P_perp = P_perpArray.sum(axis=0)
+P_para = P_paraArray.sum(axis=0)
+Pol = np.zeros(50)
+for i,ting in enumerate(P_perp):
+    if (ting > 0 ) or (P_para[i]>0):
+        Pol[i] = (ting - P_para[i])/(ting + P_para[i])
+    else:
+        Pol[i] = 1.0
+###Now Total polarisation over all frequencies for both init and whole jet
+Pol_Init_tot = (P_perpArray[0,:].sum() - P_paraArray[0,:].sum())/(P_perpArray[0,:].sum() + P_paraArray[0,:].sum()) #should = alpha+1/alpha+7/3
+Pol_tot = (P_perp.sum() - P_para.sum())/(P_perp.sum() + P_para.sum())
+
+'''-----------------------------------------------'''
+print(len(opdata[:,0]), len(opdata[0]))
+
+dx_steps = basics[:,0]
+x_cumu = basics[:,1]
+B_steps = basics[:,2]
+R_steps = basics[:,3]
+
+print(len(dx_steps), len(x_cumu), len(B_steps), len(R_steps))
+
+nfreqs = len(powdata[0]) #gives the number of frequency bins
+nSecs = len(powdata[:,0]) #gives the number of jet sections
+
+print('Computing ', nfreqs, ' frequencies...')
+print('There are ', nSecs, ' jet sections.')
+
+#create an array to store optical depths along the LoS for every frequency bin from every jet section
+opt_depths = np.zeros(nSecs*nfreqs)
+opt_depths = np.reshape(opt_depths, (nSecs, nfreqs)) #nSecs cols, nfreqs rows
+
+print('new array shape is:', np.shape(opt_depths))
+print('required shape is:', np.shape(fcritdata))
+
+#print dx_steps
+
+P_detected = np.zeros(len(fq_mins)) #store all emitted power here
+P_detected_raw = np.zeros(len(fq_mins)) #as above for non opacity data
+
+
+
+for i in range(nSecs):#nSecs): #loop over jet sections no of ROWS (column elements)
+
+#    print 'working'
+
+    B = B_steps[i]
+    R = R_steps[i]
+    dx = dx_steps[i]
+
+    power_array = powdata[i]#emitted power in jet rest frame
+
+    #just try to do the first section of the jet
+    for j in range(nfreqs): #loop over all frequencies emitted by a jet section (row elements/no cols)
+    #Power_array = powdata[i] #probably need this here for whole jet
+#         print i, j
+         freq_emit = fcritdata[i, j] #frequency at which power is emitted
+         #print freq_emit #gives the expected values          
+
+         index=0
+         f_emit_max=0
+         f_emit_min=0
+
+         #PSUEDOCODE:
+         #find the corresponding frequency bin for this emission
+         for a in range(len(fq_mins)): #number of energy bins
+             if freq_emit > fq_mins[a] and freq_emit <= fq_maxs[a]:
+                  f_emit_max = fq_maxs[a]
+                  f_emit_min = fq_mins[a]
+                  index=a #changes index in detected power array  
+                  
+#         print "%.3e" % f_emit_min, "%.3e" % f_emit_max, "%.3e" %  freq_emit
+
+         power_emit = powdata[i,j] #power at which this frequency was emitted
+                  #optical_depth = 0 # initialise
+         for k in range(nSecs-i): #loop over remaining jet sections 
+             k+=i #ensure loops over correct section jet to end not from beginning
+             if fcritdata[k, j] <= f_emit_max and fcritdata[k, j] > f_emit_min:
+                 opt_depths[i,j] += opdata[k,j]*dx_steps[k]
+
+
+P_rad_sec1 = np.array([])
+#P_emit_sec1 = np.array([]) #jua=st the first row of fcrits
+
+for i in range(nfreqs):
+     seen_power = powdata[0,i]*np.exp(-opt_depths[0, i]*gamma_bulk**2*(1/np.cos(np.deg2rad(theta_obs))-beta_bulk))
+     #seen_power = powdata[0,i]*np.exp(-opt_depths[0, i])*(1/np.cos(np.deg2rad(theta_obs)))
+     P_rad_sec1 = np.append(P_rad_sec1, seen_power)
+
+#plt.figure()
+#plt.plot(B_steps[0:-1], fcritdata[:,0])
+#plt.xscale('log')
+#plt.yscale('log')
+#plt.show()
+
+flux = P_rad_sec1
+flux_l = powdata[0]
+max = np.max(flux)
+
+
+obs_power = copy.deepcopy(fcritdata)
+
+#some code to plot an entire synchrotron spectrum
+#first get the power seen from each section
+for i in range(nSecs):
+    for j in range(nfreqs):
+        #obs_power[i,j] = powdata[i, j]*np.exp(-opt_depths[i, j])*(1/(np.cos(np.deg2rad(theta_obs))))
+        obs_power[i,j] = powdata[i,j]*np.exp(-opt_depths[i, j]*gamma_bulk**2*((1/np.cos(np.deg2rad(theta_obs)))-beta_bulk))
+
+counts = 0
+#now sum up the total power
+for i in range(nSecs):
+    for j in range(nfreqs):
+        for k in range(len(fq_mins)):
+            freq_emit = fcritdata[i, j] #frequency at which power is emitted                                      
+            counts = 0
+            if freq_emit > fq_mins[k] and freq_emit <= fq_maxs[k]:
+                counts +=1 
+#                print counts #tests for double counting
+                P_detected[k] += obs_power[i,j]
+                P_detected_raw[k] += powdata[i,j]
+
+#Ptot_xerr=[np.log10(freqtoeV(fq_mids-fq_mins)), np.log10(freqtoeV(fq_maxs-fq_mids))]
+Ptot_xerr=[(freqtoeV(fq_mids-fq_mins)), (freqtoeV(fq_maxs-fq_mids))]
+
+'''__________________________________'''
+P_detected_IC = np.zeros(len(fq_mins_IC))
+
+for i in range(nSecs):
+    for j in range(nfreqs):
+        for k in range(len(fq_mins_IC)):
+            freq_emit = ICfreqdata[i, j] #frequency at which power is emitted
+            counts = 0
+            if freq_emit > fq_mins_IC[k] and freq_emit <= fq_maxs_IC[k]:
+                counts +=1
+                #                print counts #tests for double counting
+                P_detected_IC[k] += ICpowdata[i,j]
+
+
+                                                       # & AXIONS AXIONS ALPS!!!!
+#THIS PART FOR WORKING OUT L_GAMMAS WITH EBL______________________________________________#
+#Now also total radiant flux between 0.1 and 100GeV -> F_gamma:
+F_gammaAx = np.zeros(10)
+L_gammaAx = np.zeros(10) #Luminostiy between 0.1 and 100GeV
+for i in range(len(P_detected_IC)):
+    if (freqtoeV(fq_mids_IC[i]) >= 2E12 and freqtoeV(fq_mids_IC[i]) <= 1E13):
+        for j in range(len(opdat)-1):
+            if (freqtoeV(fq_mids_IC[i]) >= opdat[j,0] and freqtoeV(fq_mids_IC[i]) < opdat[j+1,0]):
+                for k in range(len(F_gammaAx)):
+                    F_gammaAx[k] += P_detected_IC[i] * (1/16 + (9/16)*math.exp(-opdat[j,k+1])) #need to add function that accounts for opacity due to EBL at particular redshift here, have to use freqtoeV(fq_mids_IC) to form this
+            elif (freqtoeV(fq_mids_IC[i])>= opdat[-1,0]):
+                 for k in range(len(F_gammaAx)):
+                    F_gammaAx[k] += P_detected_IC[i] * (1/16 + (9/16)*math.exp(-opdat[-1,k+1]))
+
+#convert flux between 0.1 and 100GeV back to Luminosity in ERGS
+L_gammaAx = F_gammaAx *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
+print(F_gammaAx,L_gammaAx)
+'''
+with open('RepAx>2<10Tev_theta0.txt', 'a') as f:
+    f.write('\n%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf' % (L_gammaAx[0], L_gammaAx[1], L_gammaAx[2], L_gammaAx[3], L_gammaAx[4], L_gammaAx[5], L_gammaAx[6], L_gammaAx[7], L_gammaAx[8], L_gammaAx[9]))
+'''
+#___________________________________________________________________________________________#
+
+#THIS PART FOR WORKING OUT L_GAMMAS WITH EBL______________________________________________#
+#Now also total radiant flux between 0.1 and 100GeV -> F_gamma:
+F_gammaEBL = np.zeros(10)
+L_gammaEBL = np.zeros(10) #Luminostiy between 0.1 and 100GeV
+for i in range(len(P_detected_IC)):
+    if (freqtoeV(fq_mids_IC[i]) >= 2E12 and freqtoeV(fq_mids_IC[i]) <= 1E13):
+        for j in range(len(opdat)-1):
+            if (freqtoeV(fq_mids_IC[i]) >= opdat[j,0] and freqtoeV(fq_mids_IC[i]) < opdat[j+1,0]):
+                for k in range(len(F_gammaEBL)):
+                    F_gammaEBL[k] += P_detected_IC[i] * math.exp(-opdat[j,k+1]) #need to add function that accounts for opacity due to EBL at particular redshift here, have to use freqtoeV(fq_mids_IC) to form this
+            elif (freqtoeV(fq_mids_IC[i])>= opdat[-1,0]):
+                 for k in range(len(F_gammaEBL)):
+                    F_gammaEBL[k] += P_detected_IC[i] * math.exp(-opdat[-1,k+1])
+
+#convert flux between 0.1 and 100GeV back to Luminosity in ERGS
+L_gammaEBL = F_gammaEBL *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
+print(F_gammaEBL,L_gammaEBL)
+'''
+with open('RepEBL>2<10Tev_theta0.txt', 'a') as f:
+    f.write('\n%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf' % (L_gammaEBL[0], L_gammaEBL[1], L_gammaEBL[2], L_gammaEBL[3], L_gammaEBL[4], L_gammaEBL[5], L_gammaEBL[6], L_gammaEBL[7], L_gammaEBL[8], L_gammaEBL[9]))
+'''
+#___________________________________________________________________________________________#
+
+
+#THIS PART IS WITHOUT EBL______________________________________________________#
+#Now also total radiant flux between 0.1 and 100GeV -> F_gamma:
+F_gamma = 0
+L_gamma = 0  #Luminostiy between 0.1 and 100GeV
+for i in range(len(P_detected_IC)):
+    if (freqtoeV(fq_mids_IC[i]) >= 2E12 and freqtoeV(fq_mids_IC[i]) <= 1E13):
+        F_gamma += P_detected_IC[i]
+
+#convert flux between 0.1 and 100GeV back to Luminosity in ERGS
+L_gamma = F_gamma *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
+print(F_gamma,L_gamma)
+'''
+with open('RepInt>2<10Tev_theta0.txt', 'a') as f:
+    f.write('\n%lf' % L_gamma)
+'''
+'''
+#__________________________________________________#
+#WITHOUT EBL, PHOTONS s^-1
+PhF_gamma = 0
+PhL_gamma = 0  #Luminostiy between 0.1 and 100GeV
+for i in range(len(P_detected_IC)):
+    if (freqtoeV(fq_mids_IC[i]) >= 1E9 and freqtoeV(fq_mids_IC[i]) <= 1E11):
+        PhF_gamma += (P_detected_IC[i] * 1.0E-7)/(6.62607004E-34*fq_mids_IC[i])
+
+#convert photon flux to number of photons per second back to Luminosity IN ERGS
+PhL_gamma = PhF_gamma *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
+print(PhF_gamma,PhL_gamma)
+
+with open('O3Gamma_Photons100GeV_theta5.txt', 'a') as f:
+    f.write('\n%lf' % PhL_gamma)
+
+'''
+
+#____________________________________________#
+I = np.loadtxt('test.txt')
+I += 3
+with open('test.txt', 'w') as f:
+    f.write('%d' % I)
+print("SUCCESS",I)
+
+'''_____________________________________________'''
+'''
+    #now add some new code to plot the IC emission
+ICdat = np.loadtxt('ICdat.txt')
+IC_x = ICdat[:,0]*doppler_factor
+IC_y = ICdat[:,1]*doppler_factor**4*1E7*(1/(4*np.pi*d_Blazar**2))#*5E4                           
+
+
+#save data
+#syncdat = np.c_[freqtoeV(fq_mids), P_detected]
+#np.savetxt('synchrotron.txt', syncdat)
+
+
+#add thin and thick contributions
+
+thin = np.loadtxt('thin.txt')
+#thin_flux = thin[:,0]*doppler_factor**4*1E7*(1/(4*np.pi*d_Blazar**2))
+thin_flux = thin*doppler_factor**4*1E7*(1/(4*np.pi*d_Blazar**2))
+
+thick = np.loadtxt('thick.txt')
+#thick_flux = thick[:,0]*doppler_factor**4*1E7*(1/(4*np.pi*d_Blazar**2))
+thick_flux = thick*doppler_factor**4*1E7*(1/(4*np.pi*d_Blazar**2))
+'''
+
+'''-----Original plot of just SED--------
+#np.savetxt('RepSSC.txt',(freqtoeV(fq_mids_IC),P_detected_IC))
+#plot the total synchrotron emission + IC
+plt.figure()
+plt.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
+plt.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
+plt.plot(ph_energy[0:30], flux_BL[0:30], 'k.', label='data 2008-2009')
+plt.plot(ph_energy_MK, flux_MK, 'gx', label='data MK')
+#plt.plot([1E10, 1E10], [1E-14, 1E-10], 'k-', lw=2)
+#plt.plot([3E11, 3E11], [1E-14, 1E-10], 'k-', lw=1)
+plt.xscale('log')
+plt.yscale('log')
+plt.ylabel(r'$\nu F_{\nu}$ (erg s$^{-1}$ cm$^{-2}$)', size='14')
+plt.xlabel('eV', size='14')
+plt.ylim(1E-14, 1E-9)
+plt.xlim(1E-6, 1E14)#plt.xlim(1E-6, 1E12)
+#plt.legend()
+plt.yticks(size='12')
+plt.xticks(size='12')
+#plt.savefig('SED.png')
+
+plt.show()'''
+
+'''-----Plot with SED and polarisations----'''
+fig = plt.figure()
+# set height ratios for sublots
+gs = gridspec.GridSpec(2, 1, height_ratios=[1, 2])
+# the fisrt subplot
+ax0 = plt.subplot(gs[0])
+# log scale for axis X of the first subplot
+ax0.set_xscale("log")
+ax0.set_xlim([1E-6, 1E13])
+ax0.set_ylim([0, 1.0])
+ax0.set_ylabel(r'$\Pi(\omega)$', size='14')
+line0, = ax0.plot(freqtoeV(fq_mids), Pol, color='b',label='Full Jet')
+line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init, color='r',label='Initial Population')
+line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
+ax0.text(1.0,0.4,'$\Pi_{tot} =$ %.5f' % Pol_tot, fontsize=10)
+ax0.text(1.0,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
+ax0.legend()
+#the second subplot
+# shared axis X
+ax1 = plt.subplot(gs[1], sharex = ax0)
+line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
+line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
+line5 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'k.', label='data 2008-2009')
+ax1.set_yscale('log')
+ax1.set_ylim([1E-14, 9.99E-10])
+ax1.set_xlim([1E-6, 1E13])
+ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='14')
+ax1.set_xlabel('eV', size='14')
+plt.setp(ax0.get_xticklabels(), visible=False)
+# remove last tick label for the second subplot
+yticks = ax1.yaxis.get_major_ticks()
+yticks[-2].label1.set_visible(False)
+
+plt.subplots_adjust(hspace=.0)
+plt.show()
+
+'''
+fig = plt.figure(figsize=(4,2))
+ax1 = fig.add_axes([0.1, 0.5, 0.8, 0.4])
+#ax1.set_yticks([0.1, 1, 10, 100])
+#ax1.set_xticks([1E9, 1E10, 1E11, 1E12, 1E13])
+line0, = ax1.plot(freqtoeV(fq_mids), Pol, color='b',label='Pol')
+line1 = ax1.plot(freqtoeV(fq_mids), Pol_Init, color='r',label='Pol_Init')
+line2 = ax1.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Pol_single')
+ax1.set_xscale('log')
+ax1.set_ylim([0,1.0])
+ax1.set_xlim([1E-6,1E13])
+ax1.text(1E5,0.5,'$\Pi_{tot} =$ %.5f' % Pol_tot, fontsize=10)
+ax1.text(1E10,0.7,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=15)
+
+ax2 = fig.add_axes([0.1, 0.5, 0.4, 0.4])
+ax2.plot(NG[0,:], NG[1,:], 'm-',label='Intrinsic (No EBL)')
+ax2.plot(NG[0,:], NG[2,:], 'b--', label='EBL')
+ax2.plot(NG[0,:], NG[3,:], 'r-', label='EBL+ALP')
+ax2.set_yscale('log')
+ax2.set_xscale('log')
+ax2.set_xticklabels('')
+ax2.set_ylim([1.0001E-4,999.999])
+ax2.set_xlim([1.0001E-16,9.9999E-12])
+ax2.set_ylabel('N($>F_{\gamma}$)$[deg^{-2}]$',fontsize=18)
+ax2.text(5E-15,100,'$20GeV<E_{\gamma}<200GeV$', fontsize=15)
+ax2.plot([2.5E-20, 2.5E-20], [1E-5, 100], 'c-.', lw=2, label='CTA South (5$\sigma$,50hr)')
+ax2.plot([5.8E-20, 5.8E-20], [1E-5, 100], 'k-.', lw=2, label='CTA North (5$\sigma$,50hr)')
+ax2.plot([5.8E-20, 5.8E-20], [1E-5, 100], '-.',color=(1.0,0.41,0.7), lw=2, label='HAWC (5$\sigma$,1yr)')
+ax2.plot([5.8E-20, 5.8E-20], [1E-5, 100], '-.',color=(1,0.79,0), lw=2, label='MAGIC (5$\sigma$,50hr)')
+ax2.legend(fontsize=10, loc=3)
+'''
