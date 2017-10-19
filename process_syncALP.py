@@ -69,7 +69,7 @@ for i,ting in enumerate(P_perp):
     else:
         Pol[i] = 1.0
 ###Now Total polarisation over all frequencies for both init and whole jet
-Pol_Init_tot = (P_perpArray[0,:].sum() - P_paraArray[0,:].sum())/(P_perpArray[0,:].sum() + P_paraArray[0,:].sum()) #should = alpha+1/alpha+7/3
+Pol_Init_tot = (P_perpArray[0,8:40].sum() - P_paraArray[0,8:40].sum())/(P_perpArray[0,8:40].sum() + P_paraArray[0,8:40].sum()) #should = alpha+1/alpha+7/3
 Pol_tot = (P_perp.sum() - P_para.sum())/(P_perp.sum() + P_para.sum())
 
 '''-----------------------------------------------'''
@@ -288,6 +288,18 @@ with open('test.txt', 'w') as f:
 print("SUCCESS",I)
 
 '''_____________________________________________'''
+
+#-------------------------------gradient of sync--------------------------------#
+Plog_detected = [math.log10(y) if y>0 else np.nan for y in P_detected]
+fqlog_mids = [math.log10(y) for y in freqtoeV(fq_mids)]
+sync_gradient = np.gradient(Plog_detected,fqlog_mids)
+for i,Z in enumerate(sync_gradient):
+    if (Z>5) or (Z<-5):
+        sync_gradient[i] = np.nan
+print(sync_gradient)
+
+#-------------------------------------------------------------------------------#
+
 '''
     #now add some new code to plot the IC emission
 ICdat = np.loadtxt('ICdat.txt')
@@ -335,9 +347,9 @@ plt.xticks(size='12')
 plt.show()'''
 
 '''-----Plot with SED and polarisations----'''
-fig = plt.figure()
+fig = plt.figure(I)
 # set height ratios for sublots
-gs = gridspec.GridSpec(2, 1, height_ratios=[1, 2])
+gs = gridspec.GridSpec(3, 1, height_ratios=[1,1,2])
 # the fisrt subplot
 ax0 = plt.subplot(gs[0])
 # log scale for axis X of the first subplot
@@ -345,17 +357,25 @@ ax0.set_xscale("log")
 ax0.set_xlim([1E-6, 1E13])
 ax0.set_ylim([0, 1.0])
 ax0.set_ylabel(r'$\Pi(\omega)$', size='14')
-line0, = ax0.plot(freqtoeV(fq_mids), Pol, color='b',label='Full Jet')
+line0 = ax0.plot(freqtoeV(fq_mids), Pol, color='b',label='Full Jet')
 line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init, color='r',label='Initial Population')
-line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
+#line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
 ax0.text(1.0,0.4,'$\Pi_{tot} =$ %.5f' % Pol_tot, fontsize=10)
 ax0.text(1.0,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
 ax0.legend()
+#subplot for the gradient
+ax05 = plt.subplot(gs[1], sharex = ax0)
+line05 = ax05.plot(freqtoeV(fq_mids), sync_gradient, color='g',label='Gradient')
+#ax05.set_yscale("log")
+ax05.set_xlim([1E-6, 1E13])
+ax05.set_ylim([-2, 2])
+yticks = ax05.yaxis.get_major_ticks()
+ax05.legend()
 #the second subplot
 # shared axis X
-ax1 = plt.subplot(gs[1], sharex = ax0)
+ax1 = plt.subplot(gs[2], sharex = ax0)
 line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
-line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
+line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b.', label='synchrotron') #synchrotron
 line5 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'k.', label='data 2008-2009')
 ax1.set_yscale('log')
 ax1.set_ylim([1E-14, 9.99E-10])
@@ -369,6 +389,7 @@ yticks[-2].label1.set_visible(False)
 
 plt.subplots_adjust(hspace=.0)
 plt.show()
+
 
 '''
 fig = plt.figure(figsize=(4,2))

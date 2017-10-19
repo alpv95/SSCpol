@@ -66,12 +66,12 @@ int main()
     //enter the parameters from the jets paper
     double W_j=8.7E36;  //W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
     double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
-    double B=0.0001, B0=0.0001;  //0.000268; //B-field at jet base
+    double B=1E-6, B0=1E-6;  //0.000268; //B-field at jet base
     double R0 = 0.0, R=0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well
     double R_prev=0.0, B_prev=0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume
     double E_min = 5.11E6; // Minimum electron energy
-    double E_max=8.1E9;//5.0E9;//5.60E9; // Energy of the ECO in eV
-    double alpha=1.95;//1.95//2.000001; // PL index of electrons
+    double E_max=8.1E12;//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV
+    double alpha=2.5;//1.95//2.000001; // PL index of electrons
     double theta_open_p = 9.7;//*(M_PI/180.0); // opening angle of the jet in the fluid frame
     double theta_obs=2.8; //3.0;//*(M_PI/180.0); // observers angle to jet axis in rad
     double gamma_bulk=7.7;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
@@ -86,7 +86,7 @@ int main()
   printf("Radius at jet base: %.5e \n", R);
 
     //define some files to store output data
-  FILE *Nfile, *freqrange, *freqfile, *opfile, *powfile, *basicdata, *elecpop, *jfile, *keyparams, *ICfile, *ICfreqfile, *Pperpfile, *Pparafile;
+  FILE *Nfile, *freqrange, *freqfile, *opfile, *powfile, *basicdata, *elecpop, *jfile, *keyparams, *ICfile, *ICfreqfile, *Pperpfile, *Pparafile; *Proj_Bfile
     Nfile = fopen("Ndata.txt", "w"); //store electron populations
     freqrange = fopen("freqrange.txt", "w");//store frequency bin boundaries
     freqfile = fopen("critfreqs.txt", "w");//store critical frequencies
@@ -100,6 +100,7 @@ int main()
     ICfreqfile = fopen("ICfreqfile.txt", "w"); //ALP
     Pperpfile = fopen("Pperpfile.txt", "w"); //polarisations
     Pparafile = fopen("Pparafile.txt", "w");
+    Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //projected B field onto plane of the sky for each section
     fprintf(keyparams, "\t%.5e\t%.5e\t%.5e \n", L_jet, gamma_bulk, theta_obs);
 
     //define some useful parameters to gauge progress
@@ -122,6 +123,7 @@ int main()
     double Ne_orig[array_size]; // at jet base: allows comparison later
     double Ne_intermed[array_size]; // intermediate population
     double dN_dE[array_size]; // no of electrons per J in each bin
+    double dN_dE_orig[array_size];
     double dEe[array_size]; //size of bin widths in eV
     double Ne_losses[array_size]; //losses per section
     double Ne_gains[array_size]; //gains per section
@@ -185,6 +187,7 @@ int main()
         dEe[i] = E_elec_max[i]-E_elec_min[i]; // sets bin widths in eV
         A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*1.6E-19, E_max*1.6E-19, 1.0); //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
         dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*1.6E-19, E_max*1.6E-19);
+        dN_dE_orig[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*1.6E-19, E_max*1.6E-19);
         Ne_e[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*1.6E-19, E_max*1.6E-19)*dEe[i]*1.6E-19;
         Ne_orig[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*1.6E-19, E_max*1.6E-19)*dEe[i]*1.6E-19; //allows comparison of final to initial electron population
 
@@ -272,6 +275,12 @@ int main()
         f_pol[i] = f_c[i];
         dfreqs_pol[i] = dfreqs[i];
     }
+    //HELICAL B-field: This variable will save the projection of the B-field on the sky for each section of the jet
+    double Proj_theta_B;
+    //parameters for helix
+    double t_helix = 0; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
+    double phi_helix = 0; //phase shift
+    double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
     
     
     printf("Beginning jet analysis... \n");
@@ -308,8 +317,8 @@ int main()
                 {
                     if ((f_pol[l]/f_c[i]) >= FG[m][0] && (f_pol[l]/f_c[i]) <= FG[m+1][0])
                     {
-                        P_perp[l] += B * FG[m+1][1] * Ne_e[i] * dfreqs_pol[l];     //power per unit frequency, have to *dfreq[j]
-                        P_para[l] += B * FG[m+1][2] * Ne_e[i] * dfreqs_pol[l]; //*dx/l_c !!! and * other constants
+                        P_perp[l] += B * FG[m+1][1] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l];     //power per unit frequency, have to *dfreq[j]
+                        P_para[l] += B * FG[m+1][2] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l]; //*dx/l_c !!! and * other constants
                     }
                     else if ((f_pol[l]/f_c[i]) <= FG[0][0] || (f_pol[l]/f_c[i]) >= FG[73][0])
                     {
@@ -319,8 +328,12 @@ int main()
                 }
             }
         }
-        
-        //********************************************** ALP *******************************************//
+        //----------------- B-field projection onto sky for this section --------------//
+        Proj_theta_B = atan2(cos(t_helix + phi_helix),(c_helix*sin(theta_obs)/R - cos(theta_obs)*sin(t_helix + phi_helix))
+
+
+
+        //********************************************** ALP IC losses *******************************************//
         
         for (i=0; i<array_size; i++)
         {
@@ -387,6 +400,7 @@ int main()
             fprintf(ICfreqfile, "\t%.5e",f_c_IC[i]); //ALP
             fprintf(Pperpfile, "\t%.5e", P_perp[i]*pow(doppler_factor, 4.0)); //polarisation power
             fprintf(Pparafile, "\t%.5e",P_para[i]*pow(doppler_factor, 4.0));
+            fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B);
             //fprintf(betadata, "\t%.5e", beta_e[i]);
 
             if (i==array_size-1) //puts the outputs for the next jet section on a new line in files
@@ -399,6 +413,7 @@ int main()
                 fprintf(ICfreqfile, "\n");
                 fprintf(Pperpfile, "\n");
                 fprintf(Pparafile, "\n");
+                fprintf(Proj_Bfile, "\n");
             }
         }
 
@@ -489,7 +504,7 @@ int main()
     for (i=0; i<array_size; i++)
 
     {
-        fprintf(elecpop, "%.6e\t%.6e\t%.6e\t%.6e \n", E_elecs[i], Ne_orig[i], Ne_intermed[i], Ne_e[i]); //file elecpop.txt
+        fprintf(elecpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", E_elecs[i], Ne_orig[i], Ne_intermed[i], Ne_e[i], dN_dE_orig[i]); //file elecpop.txt
 
     }
 
