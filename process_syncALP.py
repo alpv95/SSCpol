@@ -1,4 +1,4 @@
-from __future__ import division
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -60,17 +60,66 @@ for i,ting in enumerate(P_perpArray[0,:]):
     else:
         Pol_Init[i] = 1.0
 ### Then polarisation for each frequency interval for whole jet emission
+ProjB_theta = np.loadtxt('Proj_Bfile.txt')
+
+
 P_perp = P_perpArray.sum(axis=0)
 P_para = P_paraArray.sum(axis=0)
-Pol = np.zeros(50)
-for i,ting in enumerate(P_perp):
-    if (ting > 0 ) or (P_para[i]>0):
-        Pol[i] = (ting - P_para[i])/(ting + P_para[i])
-    else:
-        Pol[i] = 1.0
+
+# form stokes vectors for each parallel and perp component of light in each section (same for all energies)
+# list of tuples which represent 2 middle components of stokes vectors
+Stokes_para = [[np.array([math.cos(2*projB),math.sin(2*projB)])for projB in projB_row]for projB_row in ProjB_theta]
+Stokes_perp = [[np.array([math.cos(2*(projB-math.pi/2)),math.sin(2*(projB-math.pi/2))]) if projB >= -math.pi/2 else np.array([math.cos(2*(projB+3*math.pi/2)),math.sin(2*(projB+3*math.pi/2))]) for projB in ProjB_row] for ProjB_row in ProjB_theta]
+Stokes_total = [np.zeros(2) for i in P_perp]
+Stokes_totaltot = np.zeros(2) #Stokes for whole spectrum
+Stokes_total_radio = np.zeros(2) # Stokes for a band in the radio range
+Stokes_total_radio_denominator = 0
+Stokes_total_optical = np.zeros(2) #stokes for a band in the optical-xray range
+Stokes_total_optical_denominator = 0
+Stokes_total_gamma = np.zeros(2) #stokes for a band in the gamma range
+Stokes_total_gamma_denominator = 0
+
+for j, item in enumerate(P_perpArray[0,:]): #loop over number of frequency bins
+    if (freqtoeV(fq_mids[j])>1.5) and (freqtoeV(fq_mids[j])<3.4):
+        Stokes_total_optical_denominator += (P_perp[j]+P_para[j])
+    elif (freqtoeV(fq_mids[j])<1E-3) and (freqtoeV(fq_mids[j])>1E-4):
+        Stokes_total_radio_denominator += (P_perp[j]+P_para[j])
+    elif (freqtoeV(fq_mids[j])<1E4) and (freqtoeV(fq_mids[j])>1E3):
+        Stokes_total_gamma_denominator += (P_perp[j]+P_para[j])
+
+    for i, item2 in enumerate(P_perpArray[:,0]): #loop over number of jet segments
+        for k,item3 in enumerate(ProjB_theta[0,:]): #loop over number of B-field blocks in jet segment
+            Stokes_total[j] += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / ((P_perp[j]+P_para[j])*np.shape(ProjB_theta)[1]) #dividing by number of blocks at the end here (assumes unifrm distr of electrons through jet segement)
+            Stokes_totaltot += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / ((P_perp.sum()+P_para.sum())*np.shape(ProjB_theta)[1])
+            #now include Polarisation in 3 different energy bands: radio,optical,gamma
+            if (freqtoeV(fq_mids[j])>1.5) and (freqtoeV(fq_mids[j])<3.4):
+                Stokes_total_optical += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+            elif (freqtoeV(fq_mids[j])<1E-3) and (freqtoeV(fq_mids[j])>1E-4):
+                Stokes_total_radio += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+            elif (freqtoeV(fq_mids[j])<1E4) and (freqtoeV(fq_mids[j])>1E3):
+                Stokes_total_gamma += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+
+Stokes_total_optical = Stokes_total_optical / Stokes_total_optical_denominator
+Stokes_total_radio = Stokes_total_radio / Stokes_total_radio_denominator
+Stokes_total_gamma = Stokes_total_gamma / Stokes_total_gamma_denominator
+
+Pol = [math.sqrt(item[0]**2 + item[1]**2) for item in Stokes_total]
+EVPA = [0.5*math.atan2(item[1],item[0]) for item in Stokes_total]
+
+Pol_tot = math.sqrt(Stokes_totaltot[0]**2 + Stokes_totaltot[1]**2)
+EVPA_tot = 0.5*math.atan2(Stokes_totaltot[1],Stokes_totaltot[0])
+
+Pol_tot_opt = math.sqrt(Stokes_total_optical[0]**2 + Stokes_total_optical[1]**2)
+EVPA_tot_opt = 0.5*math.atan2(Stokes_total_optical[1],Stokes_total_optical[0])
+Pol_tot_rad = math.sqrt(Stokes_total_radio[0]**2 + Stokes_total_radio[1]**2)
+EVPA_tot_rad = 0.5*math.atan2(Stokes_total_radio[1],Stokes_total_radio[0])
+Pol_tot_gam = math.sqrt(Stokes_total_gamma[0]**2 + Stokes_total_gamma[1]**2)
+EVPA_tot_gam = 0.5*math.atan2(Stokes_total_gamma[1],Stokes_total_gamma[0])
+
+
 ###Now Total polarisation over all frequencies for both init and whole jet
-Pol_Init_tot = (P_perpArray[0,8:40].sum() - P_paraArray[0,8:40].sum())/(P_perpArray[0,8:40].sum() + P_paraArray[0,8:40].sum()) #should = alpha+1/alpha+7/3
-Pol_tot = (P_perp.sum() - P_para.sum())/(P_perp.sum() + P_para.sum())
+Pol_Init_tot = (P_perpArray[0,:].sum() - P_paraArray[0,:].sum())/(P_perpArray[0,:].sum() + P_paraArray[0,:].sum()) #should = alpha+1/alpha+7/3
+'''Pol_tot = (P_perp.sum() - P_para.sum())/(P_perp.sum() + P_para.sum())'''
 
 '''-----------------------------------------------'''
 print(len(opdata[:,0]), len(opdata[0]))
@@ -198,7 +247,7 @@ for i in range(nSecs):
                 #                print counts #tests for double counting
                 P_detected_IC[k] += ICpowdata[i,j]
 
-
+'''
                                                        # & AXIONS AXIONS ALPS!!!!
 #THIS PART FOR WORKING OUT L_GAMMAS WITH EBL______________________________________________#
 #Now also total radiant flux between 0.1 and 100GeV -> F_gamma:
@@ -218,11 +267,12 @@ for i in range(len(P_detected_IC)):
 L_gammaAx = F_gammaAx *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
 print(F_gammaAx,L_gammaAx)
 '''
+'''
 with open('RepAx>2<10Tev_theta0.txt', 'a') as f:
     f.write('\n%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf' % (L_gammaAx[0], L_gammaAx[1], L_gammaAx[2], L_gammaAx[3], L_gammaAx[4], L_gammaAx[5], L_gammaAx[6], L_gammaAx[7], L_gammaAx[8], L_gammaAx[9]))
 '''
 #___________________________________________________________________________________________#
-
+'''
 #THIS PART FOR WORKING OUT L_GAMMAS WITH EBL______________________________________________#
 #Now also total radiant flux between 0.1 and 100GeV -> F_gamma:
 F_gammaEBL = np.zeros(10)
@@ -241,12 +291,13 @@ for i in range(len(P_detected_IC)):
 L_gammaEBL = F_gammaEBL *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
 print(F_gammaEBL,L_gammaEBL)
 '''
+'''
 with open('RepEBL>2<10Tev_theta0.txt', 'a') as f:
     f.write('\n%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf' % (L_gammaEBL[0], L_gammaEBL[1], L_gammaEBL[2], L_gammaEBL[3], L_gammaEBL[4], L_gammaEBL[5], L_gammaEBL[6], L_gammaEBL[7], L_gammaEBL[8], L_gammaEBL[9]))
 '''
 #___________________________________________________________________________________________#
 
-
+'''
 #THIS PART IS WITHOUT EBL______________________________________________________#
 #Now also total radiant flux between 0.1 and 100GeV -> F_gamma:
 F_gamma = 0
@@ -259,9 +310,10 @@ for i in range(len(P_detected_IC)):
 L_gamma = F_gamma *((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)
 print(F_gamma,L_gamma)
 '''
-with open('RepInt>2<10Tev_theta0.txt', 'a') as f:
-    f.write('\n%lf' % L_gamma)
-'''
+#with open('RepInt>2<10Tev_theta0.txt', 'a') as f:
+    #f.write('\n%lf' % L_gamma)
+
+
 '''
 #__________________________________________________#
 #WITHOUT EBL, PHOTONS s^-1
@@ -281,24 +333,13 @@ with open('O3Gamma_Photons100GeV_theta5.txt', 'a') as f:
 '''
 
 #____________________________________________#
-I = np.loadtxt('test.txt')
-I += 3
-with open('test.txt', 'w') as f:
-    f.write('%d' % I)
-print("SUCCESS",I)
+
+with open('EVPA+Pol.txt', 'a') as f:
+    f.write('%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n' % (EVPA_tot,EVPA_tot_opt,EVPA_tot_rad,EVPA_tot_gam,Pol_tot,Pol_tot_opt,Pol_tot_rad,Pol_tot_gam))
+print("SUCCESS")
 
 '''_____________________________________________'''
 
-#-------------------------------gradient of sync--------------------------------#
-Plog_detected = [math.log10(y) if y>0 else np.nan for y in P_detected]
-fqlog_mids = [math.log10(y) for y in freqtoeV(fq_mids)]
-sync_gradient = np.gradient(Plog_detected,fqlog_mids)
-for i,Z in enumerate(sync_gradient):
-    if (Z>5) or (Z<-5):
-        sync_gradient[i] = np.nan
-print(sync_gradient)
-
-#-------------------------------------------------------------------------------#
 
 '''
     #now add some new code to plot the IC emission
@@ -347,7 +388,8 @@ plt.xticks(size='12')
 plt.show()'''
 
 '''-----Plot with SED and polarisations----'''
-fig = plt.figure(I)
+'''
+fig = plt.figure()
 # set height ratios for sublots
 gs = gridspec.GridSpec(3, 1, height_ratios=[1,1,2])
 # the fisrt subplot
@@ -357,19 +399,27 @@ ax0.set_xscale("log")
 ax0.set_xlim([1E-6, 1E13])
 ax0.set_ylim([0, 1.0])
 ax0.set_ylabel(r'$\Pi(\omega)$', size='14')
-line0 = ax0.plot(freqtoeV(fq_mids), Pol, color='b',label='Full Jet')
-line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init, color='r',label='Initial Population')
+line0 = ax0.plot(freqtoeV(fq_mids), Pol,'b',label='Full Jet')
+line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
 #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
-ax0.text(1.0,0.4,'$\Pi_{tot} =$ %.5f' % Pol_tot, fontsize=10)
-ax0.text(1.0,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
+ax0.text(100,0.4,'$\Pi_{tot} =$ %.5f' % Pol_tot, fontsize=10)
+ax0.text(100,0.6,'$\Pi_{optical} =$ %.5f' % Pol_tot_opt, fontsize=10)
+ax0.text(100,0.8,'$\Pi_{rad} =$ %.5f' % Pol_tot_rad, fontsize=10)
+ax0.text(100,0.95,'$\Pi_{gamma} =$ %.5f' % Pol_tot_gam, fontsize=10)
+ax0.text(100,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
+
 ax0.legend()
-#subplot for the gradient
+#subplot for the EVPA
 ax05 = plt.subplot(gs[1], sharex = ax0)
-line05 = ax05.plot(freqtoeV(fq_mids), sync_gradient, color='g',label='Gradient')
+line05 = ax05.plot(freqtoeV(fq_mids), EVPA, color='g',label='EVPA')
 #ax05.set_yscale("log")
 ax05.set_xlim([1E-6, 1E13])
-ax05.set_ylim([-2, 2])
+ax05.set_ylim([-1.58, 1.58])
 yticks = ax05.yaxis.get_major_ticks()
+ax05.text(100,0.4,'$EVPA_{tot} =$ %.5f' % EVPA_tot, fontsize=10)
+ax05.text(100,-0.15,'$EVPA_{optical} =$ %.5f' % EVPA_tot_opt, fontsize=10)
+ax05.text(100,-0.65,'$EVPA_{radio} =$ %.5f' % EVPA_tot_rad, fontsize=10)
+ax05.text(100,0.9,'$EVPA_{gamma} =$ %.5f' % EVPA_tot_gam, fontsize=10)
 ax05.legend()
 #the second subplot
 # shared axis X
@@ -389,7 +439,7 @@ yticks[-2].label1.set_visible(False)
 
 plt.subplots_adjust(hspace=.0)
 plt.show()
-
+'''
 
 '''
 fig = plt.figure(figsize=(4,2))

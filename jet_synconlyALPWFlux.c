@@ -29,8 +29,9 @@ double w, x, y, z, a, b, c, d, q;
 int dx_set; // use to define smallest non zero population
 int counter;
 
-int main()
+int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
+    //printf("%s",argv[1]); //wanna figure out how to get inputs to come in not as strings
     FILE *OW_jfile, *test, *FGfile;
     OW_jfile = fopen("OW_jfile.txt","r");
     test = fopen("test.txt","r");
@@ -66,12 +67,12 @@ int main()
     //enter the parameters from the jets paper
     double W_j=8.7E36;  //W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
     double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
-    double B=1E-6, B0=1E-6;  //0.000268; //B-field at jet base
+    double B=1E-4, B0=1E-4;  //0.000268; //B-field at jet base
     double R0 = 0.0, R=0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well
     double R_prev=0.0, B_prev=0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume
     double E_min = 5.11E6; // Minimum electron energy
-    double E_max=8.1E12;//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV
-    double alpha=2.5;//1.95//2.000001; // PL index of electrons
+    double E_max=8.1E9;//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV
+    double alpha=1.95;//1.95//2.000001; // PL index of electrons
     double theta_open_p = 9.7;//*(M_PI/180.0); // opening angle of the jet in the fluid frame
     double theta_obs=2.8; //3.0;//*(M_PI/180.0); // observers angle to jet axis in rad
     double gamma_bulk=7.7;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
@@ -86,7 +87,7 @@ int main()
   printf("Radius at jet base: %.5e \n", R);
 
     //define some files to store output data
-  FILE *Nfile, *freqrange, *freqfile, *opfile, *powfile, *basicdata, *elecpop, *jfile, *keyparams, *ICfile, *ICfreqfile, *Pperpfile, *Pparafile; *Proj_Bfile
+  FILE *Nfile, *freqrange, *freqfile, *opfile, *powfile, *basicdata, *elecpop, *jfile, *keyparams, *ICfile, *ICfreqfile, *Pperpfile, *Pparafile, *Proj_Bfile;
     Nfile = fopen("Ndata.txt", "w"); //store electron populations
     freqrange = fopen("freqrange.txt", "w");//store frequency bin boundaries
     freqfile = fopen("critfreqs.txt", "w");//store critical frequencies
@@ -263,7 +264,7 @@ int main()
     double n_rad;
     double IC_losses[array_size];
 
-    //****************Initialise Polarisation variables
+    //****************Initialise Polarisation variables *****************************************************************************//
     //first set frequency bins for polarised powers to drop into:
     double f_pol[array_size];
     double P_perp[array_size];
@@ -276,13 +277,38 @@ int main()
         dfreqs_pol[i] = dfreqs[i];
     }
     //HELICAL B-field: This variable will save the projection of the B-field on the sky for each section of the jet
-    double Proj_theta_B;
+    //now it is an array to include all the random blocks of B-field
+    int n_blocks = 50;
+    double Proj_theta_B[n_blocks];
+    //defining how far along the helix we are
+    int helix_counter;
+    sscanf(argv[2], "%d", &helix_counter); //taking input from command line how many 'days' we have been observing
     //parameters for helix
-    double t_helix = 0; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
-    double phi_helix = 0; //phase shift
+    double t_helix = helix_counter*M_PI/8; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
+    //Pi constant decided how quickly we sample along the helix -> timescale
+    double phi_helix = 0; //phase shift, just an initial condition
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
-    
-    
+    //choosing random vectors (a_0,b_0,c_0) in unit sphere for random blocks initial B directions:
+    srand((unsigned)time(NULL)); //seeds random number generator from computer clock
+    double a_0[n_blocks-1];
+    double b_0[n_blocks-1];
+    double c_0[n_blocks-1];
+    for (i=0; i<(n_blocks-1); i++){ //these are the random B-field vectors in each block as if we are looking straight down jet (have to rotate by theta_obs)
+      a_0[i] = rand() % 200;
+      b_0[i] = rand() % 200;
+      c_0[i] = rand() % 200;
+      a_0[i]=(a_0[i]-100)/100;
+      b_0[i]=(b_0[i]-100)/100;
+      c_0[i]=(c_0[i]-100)/100;
+      a_0[i] = a_0[i] / (sqrt(a_0[i]*a_0[i]+b_0[i]*b_0[i]+c_0[i]*c_0[i])); //Normalising B-field vectors
+      b_0[i] = b_0[i] / (sqrt(a_0[i]*a_0[i]+b_0[i]*b_0[i]+c_0[i]*c_0[i]));
+      c_0[i] = c_0[i] / (sqrt(a_0[i]*a_0[i]+b_0[i]*b_0[i]+c_0[i]*c_0[i]));
+    }
+    int EVPA_rotation;
+    sscanf(argv[1], "%d", &EVPA_rotation); //taking input from command line if true begin EVPA rotation, if false do not
+    int DopDep;
+    sscanf(argv[3], "%d", &DopDep); //taking input from command line if true activate DopDep, if false do not
+
     printf("Beginning jet analysis... \n");
     while (x<L_jet)//for (x=0; x<L_jet; x+=dx)
     {
@@ -318,7 +344,7 @@ int main()
                     if ((f_pol[l]/f_c[i]) >= FG[m][0] && (f_pol[l]/f_c[i]) <= FG[m+1][0])
                     {
                         P_perp[l] += B * FG[m+1][1] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l];     //power per unit frequency, have to *dfreq[j]
-                        P_para[l] += B * FG[m+1][2] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l]; //*dx/l_c !!! and * other constants
+                        P_para[l] += B * FG[m+1][2] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l]; //*dx/l_c !!! (this happens further down) and * other constants
                     }
                     else if ((f_pol[l]/f_c[i]) <= FG[0][0] || (f_pol[l]/f_c[i]) >= FG[73][0])
                     {
@@ -329,9 +355,52 @@ int main()
             }
         }
         //----------------- B-field projection onto sky for this section --------------//
-        Proj_theta_B = atan2(cos(t_helix + phi_helix),(c_helix*sin(theta_obs)/R - cos(theta_obs)*sin(t_helix + phi_helix))
+        // Now have introduced R dependence on the random blocks as well, works just like for the helical case, just * R_old/R_new on c_0 term
+        //now can also include doppler depolarisation, changing the B field to EFFECTIVE B fields which give correct perp E component as if it had
+        //been doppler depolarisedx
+        if (!EVPA_rotation && !DopDep)
+        {
 
+            Proj_theta_B[0] = atan2(cos(t_helix + phi_helix),(c_helix*sin(theta_obs)/R - cos(theta_obs)*sin(t_helix + phi_helix))); //helical B in middle block
+            for (i=0; i<(n_blocks-1); i++)
+            {
+                Proj_theta_B[i+1] = atan2(b_0[i],(c_0[i]*sin(theta_obs)*R0/R + a_0[i]*cos(theta_obs))); //random B-fields in other blocks
+            }
 
+        }
+        if (EVPA_rotation && !DopDep) //now starting a rotation, big chunk of blocks will be the helical field
+        {
+            for (l=0; l<(n_blocks/3); l++)
+            { //1/3 is ratio of blocks which turn helical
+                Proj_theta_B[l] = atan2(cos(t_helix + phi_helix),(c_helix*sin(theta_obs)/R - cos(theta_obs)*sin(t_helix + phi_helix))); //helical B in middle block
+            }
+            for (i=(n_blocks/3); i<(n_blocks); i++)
+            {
+                Proj_theta_B[i] = atan2(b_0[i-1],(c_0[i-1]*sin(theta_obs)*R0/R + a_0[i-1]*cos(theta_obs)));
+            }
+
+        }
+        if (!EVPA_rotation && DopDep)
+        {
+            Proj_theta_B[0] = DD_Beffective((c_helix*sin(theta_obs) - R*cos(theta_obs)*sin(t_helix + phi_helix)), R*cos(t_helix + phi_helix), (R*sin(theta_obs)*sin(t_helix+phi_helix) + c_helix*cos(theta_obs)), sin(theta_obs), 0, cos(theta_obs), gamma_bulk);
+            for (i=0; i<(n_blocks-1); i++)
+            {
+                Proj_theta_B[i+1] = DD_Beffective((c_0[i]*sin(theta_obs) + a_0[i]*cos(theta_obs)*R/R0),b_0[i]*R/R0,(c_0[i]*cos(theta_obs)-a_0[i]*sin(theta_obs)*R/R0),sin(theta_obs),0,cos(theta_obs),gamma_bulk); //random B-fields in other blocks
+            }
+
+        }
+        if (EVPA_rotation && DopDep)
+        {
+            for (l=0; l<(n_blocks/3); l++)
+            {
+                Proj_theta_B[l] = DD_Beffective((c_helix*sin(theta_obs) - R*cos(theta_obs)*sin(t_helix + phi_helix)), R*cos(t_helix + phi_helix), (R*sin(theta_obs)*sin(t_helix+phi_helix) + c_helix*cos(theta_obs)), sin(theta_obs), 0, cos(theta_obs), gamma_bulk);
+            }
+            for (i=(n_blocks/3); i<(n_blocks); i++)
+            {
+                Proj_theta_B[i] = DD_Beffective((c_0[i-1]*sin(theta_obs) + a_0[i-1]*cos(theta_obs)*R/R0),b_0[i-1]*R/R0,(c_0[i-1]*cos(theta_obs)-a_0[i-1]*sin(theta_obs)*R/R0),sin(theta_obs),0,cos(theta_obs),gamma_bulk); //random B-fields in other blocks
+            }
+
+        }
 
         //********************************************** ALP IC losses *******************************************//
         
@@ -400,7 +469,7 @@ int main()
             fprintf(ICfreqfile, "\t%.5e",f_c_IC[i]); //ALP
             fprintf(Pperpfile, "\t%.5e", P_perp[i]*pow(doppler_factor, 4.0)); //polarisation power
             fprintf(Pparafile, "\t%.5e",P_para[i]*pow(doppler_factor, 4.0));
-            fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B);
+            //fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B);
             //fprintf(betadata, "\t%.5e", beta_e[i]);
 
             if (i==array_size-1) //puts the outputs for the next jet section on a new line in files
@@ -413,7 +482,15 @@ int main()
                 fprintf(ICfreqfile, "\n");
                 fprintf(Pperpfile, "\n");
                 fprintf(Pparafile, "\n");
-                fprintf(Proj_Bfile, "\n");
+                //fprintf(Proj_Bfile, "\n");
+            }
+        }
+        //same thing as above but now just to save Proj_Bs as this has a different size (nblocks)
+        for(i=0; i<n_blocks; i++){
+            //save Projected B field angle for each jet section and block here
+            fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B[i]);
+            if (i==n_blocks-1){
+                fprintf(Proj_Bfile,"\n");
             }
         }
 

@@ -38,20 +38,20 @@ Pol_tot = (P_perp.sum() - P_para.sum())/(P_perp.sum() + P_para.sum())
 EVPA = []
 
 #find time taken to traverse first section dx in days, this will be Poisson increment:
-t0 = (Basics[0,0] / (3E8)) / (60*60*24)
-lamb = 7
+t0 = (Basics[0,0]*1500 / (3E8)) / (60*60*24)
+lamb = 2.5
 Poiss = [np.random.poisson(lamb) for i in range(31)]
 T = [t0*i for i in range(sum(Poiss))]
 
 phi = 0
 R = Basics[0,3]
 theta_obs=keydat[2]#2.8
-c =1000  #Basics[0,0]/R
+c = Basics[0,0]*1500/R
 print(c)
 
 k = 0
 for i,Pois in enumerate(Poiss):
-    theta_B = math.atan2(math.cos(k*t0/50 + phi),((c/R)*math.sin(theta_obs)-math.cos(theta_obs)*math.sin(k*t0/50 +phi))) #maybe use arctan2
+    theta_B = math.atan2(math.cos(k*t0/13 + phi),((c/R)*math.sin(theta_obs)-math.cos(theta_obs)*math.sin(k*t0/13 +phi))) #maybe use arctan2
     for j in range(Pois):
         EVPA.append(theta_B * 180/math.pi)
     k += Pois

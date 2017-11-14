@@ -927,3 +927,30 @@ double P_jet(double B, double gamma, double R, double beta)
   Pow = (B*B/(2.0*4.0*M_PI*1E-7))*3.0E8*M_PI*R*R*gamma*gamma*(1.0+(beta*beta/3.0));
   return Pow;
 }
+
+
+/*Fn to calculate EFFECTIVE B-field due to doppler depolarisation */
+double DD_Beffective(double a, double b, double c, double v1, double v2, double v3, double Gamma)
+{
+
+  double Blength = sqrt(a*a+b*b+c*c);
+  double vlength = sqrt(v1*v1+v2*v2+v3*v3);
+  a = a / (Blength); //Normalising B-field vectors
+  b = b / (Blength);
+  c = c / (Blength);
+  v1 = sqrt(1 - 1/(Gamma*Gamma))* v1 / (vlength);
+  v2 = sqrt(1 - 1/(Gamma*Gamma))* v2 / (vlength);
+  v3 = sqrt(1 - 1/(Gamma*Gamma))* v3 / (vlength);
+
+  double q1 = a + v1*c-v3*a - (Gamma/(1+Gamma))*(v1*a+v2*b+v3*c)*v1;
+  double q2 = b + v2*c - b*v3 - (Gamma/(1+Gamma))*(v1*a+v2*b+v3*c)*v2;
+  //double q3 = c - (Gamma/(1+Gamma))*(v1*a+v2*b+v3*c)*v3;
+  double e1 = -q2 / sqrt(q1*q1+q2*q2);
+  double e2 =  q1 / sqrt(q1*q1+q2*q2); //to get vector perp to this (the effective B), swap x and y components and negate new y
+  //B_eff = [e2,-e1]
+  double Proj_theta_Beff = atan2(-e1,e2);
+
+
+  return Proj_theta_Beff;
+
+}

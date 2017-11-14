@@ -89,6 +89,7 @@ double IC_loss(double beta, double gamma, double Urad);
 
 double P_jet(double B, double gamma, double R, double beta);
 double P_jet(double B, double gamma, double R, double beta);
+double DD_Beffective(double a, double b, double c, double v1, double v2, double v3, double Gamma);
 
 #endif
 
