@@ -73,7 +73,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double E_min = 5.11E6; // Minimum electron energy
     double E_max=8.1E9;//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV
     double alpha=1.95;//1.95//2.000001; // PL index of electrons
-    double theta_open_p = 9.7;//*(M_PI/180.0); // opening angle of the jet in the fluid frame
+    double theta_open_p = 32.0;//*(M_PI/180.0); // opening angle of the jet in the fluid frame
     double theta_obs=2.8; //3.0;//*(M_PI/180.0); // observers angle to jet axis in rad
     double gamma_bulk=7.7;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
 
@@ -361,10 +361,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         if (!EVPA_rotation && !DopDep)
         {
 
-            Proj_theta_B[0] = atan2(cos(t_helix + phi_helix),(c_helix*sin(theta_obs)/R - cos(theta_obs)*sin(t_helix + phi_helix))); //helical B in middle block
+            Proj_theta_B[0] = atan2(cos(t_helix + phi_helix),(c_helix*sin(deg2rad(theta_obs))/R - cos(deg2rad(theta_obs))*sin(t_helix + phi_helix))); //helical B in middle block
             for (i=0; i<(n_blocks-1); i++)
             {
-                Proj_theta_B[i+1] = atan2(b_0[i],(c_0[i]*sin(theta_obs)*R0/R + a_0[i]*cos(theta_obs))); //random B-fields in other blocks
+                Proj_theta_B[i+1] = atan2(b_0[i],(c_0[i]*sin(deg2rad(theta_obs))*R0/R + a_0[i]*cos(deg2rad(theta_obs)))); //random B-fields in other blocks
             }
 
         }
@@ -372,20 +372,20 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         {
             for (l=0; l<(n_blocks/3); l++)
             { //1/3 is ratio of blocks which turn helical
-                Proj_theta_B[l] = atan2(cos(t_helix + phi_helix),(c_helix*sin(theta_obs)/R - cos(theta_obs)*sin(t_helix + phi_helix))); //helical B in middle block
+                Proj_theta_B[l] = atan2(cos(t_helix + phi_helix),(c_helix*sin(deg2rad(theta_obs))/R - cos(deg2rad(theta_obs))*sin(t_helix + phi_helix))); //helical B in middle block
             }
             for (i=(n_blocks/3); i<(n_blocks); i++)
             {
-                Proj_theta_B[i] = atan2(b_0[i-1],(c_0[i-1]*sin(theta_obs)*R0/R + a_0[i-1]*cos(theta_obs)));
+                Proj_theta_B[i] = atan2(b_0[i-1],(c_0[i-1]*sin(deg2rad(theta_obs))*R0/R + a_0[i-1]*cos(deg2rad(theta_obs))));
             }
 
-        }
+        } //Now each v vector is different for each block as theta_obs < theta_open
         if (!EVPA_rotation && DopDep)
         {
-            Proj_theta_B[0] = DD_Beffective((c_helix*sin(theta_obs) - R*cos(theta_obs)*sin(t_helix + phi_helix)), R*cos(t_helix + phi_helix), (R*sin(theta_obs)*sin(t_helix+phi_helix) + c_helix*cos(theta_obs)), sin(theta_obs), 0, cos(theta_obs), gamma_bulk);
+            Proj_theta_B[0] = DD_Beffective((c_helix*sin(deg2rad(theta_obs)) - R*cos(deg2rad(theta_obs))*sin(t_helix + phi_helix)), R*cos(t_helix + phi_helix), (R*sin(deg2rad(theta_obs))*sin(t_helix+phi_helix) + c_helix*cos(deg2rad(theta_obs))), sin(deg2rad(theta_obs)), 0, cos(deg2rad(theta_obs)), gamma_bulk);
             for (i=0; i<(n_blocks-1); i++)
             {
-                Proj_theta_B[i+1] = DD_Beffective((c_0[i]*sin(theta_obs) + a_0[i]*cos(theta_obs)*R/R0),b_0[i]*R/R0,(c_0[i]*cos(theta_obs)-a_0[i]*sin(theta_obs)*R/R0),sin(theta_obs),0,cos(theta_obs),gamma_bulk); //random B-fields in other blocks
+                Proj_theta_B[i+1] = DD_Beffective((c_0[i]*sin(deg2rad(theta_obs)) + a_0[i]*cos(deg2rad(theta_obs))*R/R0),b_0[i]*R/R0,(c_0[i]*cos(deg2rad(theta_obs))-a_0[i]*sin(deg2rad(theta_obs))*R/R0),sin(deg2rad(theta_obs)),0,cos(deg2rad(theta_obs)),gamma_bulk); //random B-fields in other blocks
             }
 
         }
@@ -393,11 +393,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         {
             for (l=0; l<(n_blocks/3); l++)
             {
-                Proj_theta_B[l] = DD_Beffective((c_helix*sin(theta_obs) - R*cos(theta_obs)*sin(t_helix + phi_helix)), R*cos(t_helix + phi_helix), (R*sin(theta_obs)*sin(t_helix+phi_helix) + c_helix*cos(theta_obs)), sin(theta_obs), 0, cos(theta_obs), gamma_bulk);
+                Proj_theta_B[l] = DD_Beffective((c_helix*sin(deg2rad(theta_obs)) - R*cos(deg2rad(theta_obs))*sin(t_helix + phi_helix)), R*cos(t_helix + phi_helix), (R*sin(deg2rad(theta_obs))*sin(t_helix+phi_helix) + c_helix*cos(deg2rad(theta_obs))), sin(deg2rad(theta_obs)), 0, cos(deg2rad(theta_obs)), gamma_bulk);
             }
             for (i=(n_blocks/3); i<(n_blocks); i++)
             {
-                Proj_theta_B[i] = DD_Beffective((c_0[i-1]*sin(theta_obs) + a_0[i-1]*cos(theta_obs)*R/R0),b_0[i-1]*R/R0,(c_0[i-1]*cos(theta_obs)-a_0[i-1]*sin(theta_obs)*R/R0),sin(theta_obs),0,cos(theta_obs),gamma_bulk); //random B-fields in other blocks
+                Proj_theta_B[i] = DD_Beffective((c_0[i-1]*sin(deg2rad(theta_obs)) + a_0[i-1]*cos(deg2rad(theta_obs))*R/R0),b_0[i-1]*R/R0,(c_0[i-1]*cos(deg2rad(theta_obs))-a_0[i-1]*sin(deg2rad(theta_obs))*R/R0),sin(deg2rad(theta_obs)),0,cos(deg2rad(theta_obs)),gamma_bulk); //random B-fields in other blocks
             }
 
         }
