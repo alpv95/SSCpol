@@ -20,10 +20,13 @@ z = 0.0686 #0.0686 BL-Lac, 0.034 Mkn501, 0.031 Mkn421, 0.211 J2143
 theta_obs=keydat[2]#2.8
 BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
 Mkn501_pts = np.loadtxt('MKN501.txt')
+Mkn421_pts = np.loadtxt('MKN421.txt')
 ph_energy = BLLac_pts[:,0]
 flux_BL = BLLac_pts[:,1]
-ph_energy_MK = Mkn501_pts[:,0]
-flux_MK = Mkn501_pts[:,1]
+ph_energy_MK501 = Mkn501_pts[:,0]
+flux_MK501 = Mkn501_pts[:,1]
+ph_energy_MK421 = Mkn421_pts[:,0]
+flux_MK421 = Mkn421_pts[:,1]
 L_jet=keydat[0]#5.0E20
 gamma_bulk=keydat[1]#7.5#12.0
 beta_bulk=(1.0-(gamma_bulk**(-2.0)))**(0.5)
@@ -48,9 +51,10 @@ basics = np.loadtxt('basicdata.txt')
 ICpowdata = np.loadtxt('ICfile.txt')*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0))#convert to flux in ergs
 ICfreqdata = np.loadtxt('ICfreqfile.txt')*doppler_factor
 '''--------------------------------------'''
-##### Loading in Polarisation powers
+##### Loading in Polarisation powers + theta for each block
 P_paraArray = np.loadtxt('Pparafile.txt')
 P_perpArray = np.loadtxt('Pperpfile.txt')
+block_theta = np.loadtxt('block_thetafile.txt')
 Pol_single = np.loadtxt('Pol_single.txt') #for comparison
 ### First calculate initial electron PL population polarisation to compare with full dynamic pop.
 Pol_Init = np.zeros(50)
@@ -62,15 +66,18 @@ for i,ting in enumerate(P_perpArray[0,:]):
 ### Then polarisation for each frequency interval for whole jet emission
 ProjB_theta = np.loadtxt('Proj_Bfile.txt')
 
-
-P_perp = P_perpArray.sum(axis=0)
-P_para = P_paraArray.sum(axis=0)
+# find the doppler factor for each block:
+doppler = 1.0/(gamma_bulk*(1.0-beta_bulk*np.cos(block_theta)))
+'''
+P_perp = P_perpArray.sum(axis=0) * (1/np.shape(ProjB_theta)[1]) * (doppler**4).sum() #have to include this average doppler weighting for denominator
+P_para = P_paraArray.sum(axis=0) * (1/np.shape(ProjB_theta)[1]) * (doppler**4).sum()
+'''
 
 # form stokes vectors for each parallel and perp component of light in each section (same for all energies)
 # list of tuples which represent 2 middle components of stokes vectors
 Stokes_para = [[np.array([math.cos(2*projB),math.sin(2*projB)])for projB in projB_row]for projB_row in ProjB_theta]
 Stokes_perp = [[np.array([math.cos(2*(projB-math.pi/2)),math.sin(2*(projB-math.pi/2))]) if projB >= -math.pi/2 else np.array([math.cos(2*(projB+3*math.pi/2)),math.sin(2*(projB+3*math.pi/2))]) for projB in ProjB_row] for ProjB_row in ProjB_theta]
-Stokes_total = [np.zeros(2) for i in P_perp]
+Stokes_total = [np.zeros(2) for i in P_perpArray[0,:]]
 Stokes_totaltot = np.zeros(2) #Stokes for whole spectrum
 Stokes_total_radio = np.zeros(2) # Stokes for a band in the radio range
 Stokes_total_radio_denominator = 0
@@ -78,7 +85,8 @@ Stokes_total_optical = np.zeros(2) #stokes for a band in the optical-xray range
 Stokes_total_optical_denominator = 0
 Stokes_total_gamma = np.zeros(2) #stokes for a band in the gamma range
 Stokes_total_gamma_denominator = 0
-
+Stokes_total_denominator = np.zeros(len(P_perpArray[0,:]))
+'''
 for j, item in enumerate(P_perpArray[0,:]): #loop over number of frequency bins
     if (freqtoeV(fq_mids[j])>1.5) and (freqtoeV(fq_mids[j])<3.4):
         Stokes_total_optical_denominator += (P_perp[j]+P_para[j])
@@ -89,25 +97,52 @@ for j, item in enumerate(P_perpArray[0,:]): #loop over number of frequency bins
 
     for i, item2 in enumerate(P_perpArray[:,0]): #loop over number of jet segments
         for k,item3 in enumerate(ProjB_theta[0,:]): #loop over number of B-field blocks in jet segment
-            Stokes_total[j] += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / ((P_perp[j]+P_para[j])*np.shape(ProjB_theta)[1]) #dividing by number of blocks at the end here (assumes unifrm distr of electrons through jet segement)
-            Stokes_totaltot += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / ((P_perp.sum()+P_para.sum())*np.shape(ProjB_theta)[1])
+
+            Stokes_total[j] += doppler[k]**4 * (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / ((P_perp[j]+P_para[j])*np.shape(ProjB_theta)[1]) #dividing by number of blocks at the end here (assumes unifrm distr of electrons through jet segement)
+            Stokes_totaltot += doppler[k]**4 * (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / ((P_perp.sum()+P_para.sum())*np.shape(ProjB_theta)[1])
             #now include Polarisation in 3 different energy bands: radio,optical,gamma
             if (freqtoeV(fq_mids[j])>1.5) and (freqtoeV(fq_mids[j])<3.4):
-                Stokes_total_optical += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+                Stokes_total_optical += doppler[k]**4 * (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
             elif (freqtoeV(fq_mids[j])<1E-3) and (freqtoeV(fq_mids[j])>1E-4):
-                Stokes_total_radio += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+                Stokes_total_radio += doppler[k]**4 * (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
             elif (freqtoeV(fq_mids[j])<1E4) and (freqtoeV(fq_mids[j])>1E3):
-                Stokes_total_gamma += (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+                Stokes_total_gamma += doppler[k]**4 * (P_perpArray[i,j]*Stokes_perp[i][k] + P_paraArray[i,j]*Stokes_para[i][k]) / (np.shape(ProjB_theta)[1])
+
+'''
+for i, item2 in enumerate(P_perpArray[:,0]): #loop over number of jet segments
+    for k,item3 in enumerate(ProjB_theta[0,:]): #loop over number of B-field blocks in jet segment
+        #if fq_mids[j]*(1 - doppler[k]/doppler_factor) > (fq_mids[j]-fq_mids[j-1])/2:
+        for j, item in enumerate(P_perpArray[0,:]): #loop over number of frequency bins
+            j_newd = (np.abs(fq_mids-fq_mids[j]*doppler[k]/doppler_factor)).argmin() #adjusting for different doppler factor of each block, might need to use log nearest?? if too  grainy
+
+            if (freqtoeV(fq_mids[j_newd])>1.5) and (freqtoeV(fq_mids[j_newd])<3.4):
+                Stokes_total_optical_denominator += (P_perpArray[i,j_newd] + P_paraArray[i,j_newd]) * (doppler[k]**4)
+            elif (freqtoeV(fq_mids[j_newd])<1E-3) and (freqtoeV(fq_mids[j_newd])>1E-4):
+                Stokes_total_radio_denominator += (P_perpArray[i,j_newd] + P_paraArray[i,j_newd]) * (doppler[k]**4)
+            elif (freqtoeV(fq_mids[j_newd])<1E4) and (freqtoeV(fq_mids[j_newd])>1E3):
+                Stokes_total_gamma_denominator += (P_perpArray[i,j_newd] + P_paraArray[i,j_newd]) * (doppler[k]**4)
+            Stokes_total_denominator[j_newd] += (P_perpArray[i,j_newd] + P_paraArray[i,j_newd]) * (doppler[k]**4)
+
+
+            Stokes_total[j_newd] += doppler[k]**4 * (P_perpArray[i,j_newd]*Stokes_perp[i][k] + P_paraArray[i,j_newd]*Stokes_para[i][k]) #dividing by number of blocks at the end here (assumes unifrm distr of electrons through jet segement)
+
+            #now include Polarisation in 3 different energy bands: radio,optical,gamma
+            if (freqtoeV(fq_mids[j_newd])>1.5) and (freqtoeV(fq_mids[j_newd])<3.4):
+                Stokes_total_optical += doppler[k]**4 * (P_perpArray[i,j_newd]*Stokes_perp[i][k] + P_paraArray[i,j_newd]*Stokes_para[i][k])
+            elif (freqtoeV(fq_mids[j_newd])<1E-3) and (freqtoeV(fq_mids[j_newd])>1E-4):
+                Stokes_total_radio += doppler[k]**4 * (P_perpArray[i,j_newd]*Stokes_perp[i][k] + P_paraArray[i,j_newd]*Stokes_para[i][k])
+            elif (freqtoeV(fq_mids[j_newd])<=1E4) and (freqtoeV(fq_mids[j_newd])>=1E3):
+                Stokes_total_gamma += doppler[k]**4 * (P_perpArray[i,j_newd]*Stokes_perp[i][k] + P_paraArray[i,j_newd]*Stokes_para[i][k])
+
 
 Stokes_total_optical = Stokes_total_optical / Stokes_total_optical_denominator
 Stokes_total_radio = Stokes_total_radio / Stokes_total_radio_denominator
 Stokes_total_gamma = Stokes_total_gamma / Stokes_total_gamma_denominator
+for i,item in enumerate(Stokes_total):
+    Stokes_total[i] = Stokes_total[i] / Stokes_total_denominator[i]
 
 Pol = [math.sqrt(item[0]**2 + item[1]**2) for item in Stokes_total]
 EVPA = [0.5*math.atan2(item[1],item[0]) for item in Stokes_total]
-
-Pol_tot = math.sqrt(Stokes_totaltot[0]**2 + Stokes_totaltot[1]**2)
-EVPA_tot = 0.5*math.atan2(Stokes_totaltot[1],Stokes_totaltot[0])
 
 Pol_tot_opt = math.sqrt(Stokes_total_optical[0]**2 + Stokes_total_optical[1]**2)
 EVPA_tot_opt = 0.5*math.atan2(Stokes_total_optical[1],Stokes_total_optical[0])
@@ -402,7 +437,6 @@ ax0.set_ylabel(r'$\Pi(\omega)$', size='14')
 line0 = ax0.plot(freqtoeV(fq_mids), Pol,'b',label='Full Jet')
 line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
 #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
-ax0.text(100,0.4,'$\Pi_{tot} =$ %.5f' % Pol_tot, fontsize=10)
 ax0.text(100,0.6,'$\Pi_{optical} =$ %.5f' % Pol_tot_opt, fontsize=10)
 ax0.text(100,0.8,'$\Pi_{rad} =$ %.5f' % Pol_tot_rad, fontsize=10)
 ax0.text(100,0.95,'$\Pi_{gamma} =$ %.5f' % Pol_tot_gam, fontsize=10)
@@ -416,7 +450,6 @@ line05 = ax05.plot(freqtoeV(fq_mids), EVPA, color='g',label='EVPA')
 ax05.set_xlim([1E-6, 1E13])
 ax05.set_ylim([-1.58, 1.58])
 yticks = ax05.yaxis.get_major_ticks()
-ax05.text(100,0.4,'$EVPA_{tot} =$ %.5f' % EVPA_tot, fontsize=10)
 ax05.text(100,-0.15,'$EVPA_{optical} =$ %.5f' % EVPA_tot_opt, fontsize=10)
 ax05.text(100,-0.65,'$EVPA_{radio} =$ %.5f' % EVPA_tot_rad, fontsize=10)
 ax05.text(100,0.9,'$EVPA_{gamma} =$ %.5f' % EVPA_tot_gam, fontsize=10)
@@ -425,8 +458,9 @@ ax05.legend()
 # shared axis X
 ax1 = plt.subplot(gs[2], sharex = ax0)
 line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
-line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b.', label='synchrotron') #synchrotron
-line5 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'k.', label='data 2008-2009')
+line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
+line5 = ax1.plot(ph_energy_MK501[0:30], flux_MK501[0:30], 'k.', label='data 2008-2009')
+line6 = ax1.plot(ph_energy_MK421[0:30], flux_MK421[0:30], 'g.', label='data 2008-2009')
 ax1.set_yscale('log')
 ax1.set_ylim([1E-14, 9.99E-10])
 ax1.set_xlim([1E-6, 1E13])

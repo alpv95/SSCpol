@@ -136,7 +136,7 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = False):
 import random
 random_B_set = [[random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)] for i in range(50000)]
 random_B_set2 = [[1,0,0],[0,1,0],[1,1,0],[-1,1,0],[-1,-1,0],[1,1,1],[2,-1,1],[3,-4,-2],[-5,1,1],[0,0,1],[0,1,1],[1,0,1],[1,1,5],[5,1,5]]
-theta_obs = 2.8 * np.pi/180
+theta_obs = 5.0 * np.pi/180
 c_helix = 1
 R = 1
 helical_set = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/8),R*np.cos(i*np.pi/8),R*np.sin(theta_obs)*np.sin(i*np.pi/8)+c_helix*np.cos(theta_obs)] for i in range(17)]
