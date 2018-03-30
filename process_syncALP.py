@@ -366,7 +366,8 @@ with open('O3Gamma_Photons100GeV_theta5.txt', 'a') as f:
     f.write('\n%lf' % PhL_gamma)
 
 '''
-
+EVPA_tot = 0
+Pol_tot = 0
 #____________________________________________#
 '''
 with open('EVPA+Pol.txt', 'a') as f:
@@ -461,6 +462,7 @@ line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse
 line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
 line5 = ax1.plot(ph_energy_MK501[0:30], flux_MK501[0:30], 'k.', label='data 2008-2009')
 line6 = ax1.plot(ph_energy_MK421[0:30], flux_MK421[0:30], 'g.', label='data 2008-2009')
+line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
 ax1.set_yscale('log')
 ax1.set_ylim([1E-14, 9.99E-10])
 ax1.set_xlim([1E-6, 1E13])
@@ -473,7 +475,6 @@ yticks[-2].label1.set_visible(False)
 
 plt.subplots_adjust(hspace=.0)
 plt.show()
-
 
 '''
 fig = plt.figure(figsize=(4,2))

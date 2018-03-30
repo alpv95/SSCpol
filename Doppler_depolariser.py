@@ -48,10 +48,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 
-def depol_plot(B,v,Gamma,n = [0,0,1],plot = False):
+def depol_plot(B,v,Gamma,n = [0,0,1],plot = True):
     B = [np.array(item) for item in B] # B input is given as list of lists now]
     v = np.array(v)
     n = np.array(n)
+
 
     U = [[] for item in B]
     V = [[] for item in B]
@@ -59,28 +60,52 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = False):
     X = [[] for item in B]
     Y = [[] for item in B]
     #Z = [[]]
+
     for i,item in enumerate(U):
         U[i], V[i], W[i] = zip(*Dop_Dep(B[i],v,Gamma,n))
 
-        if i<=10:
-            X[i] = (i*0.2,i*0.2)
+        if i<=20:
+            X[i] = (i*20,i*20)
             Y[i] = (0,0)
-        elif i<=20:
+        elif i<=30:
             X[i] = ((i-11)*0.2,(i-11)*0.2)
             Y[i] = (0.5,0.5)
-        elif i<=30:
+        elif i<=40:
             X[i] = ((i-21)*0.2,(i-21)*0.2)
             Y[i] = (1.0,1.0)
-        elif i<=40:
+        elif i<=50:
             X[i] = ((i-31)*0.2,(i-31)*0.2)
             Y[i] = (1.5,1.5)
-        elif i<= 50:
+        elif i<= 60:
             X[i] = ((i-41)*0.2,(i-41)*0.2)
             Y[i] = (2.0,2.0)
         else:
             X[i] = ((i-51)*0.2,(i-51)*0.2)
             Y[i] = (2.5,2.5)
 
+    #add jet axis arrow
+    Xv = (-50,-50)
+    Yv = (0,0)
+    Uv = (v[0],-v[0])
+    Vv = (v[1],-v[1])
+
+    #for double ended arrows:
+    Ud = []; Vd = []; Xd = []; Yd=[]
+    for i,ting in enumerate(U):
+        Ud.extend([U[i],(-U[i][0],-U[i][1])])
+        Vd.extend([V[i],(-V[i][0],-V[i][1])])
+        Xd.extend([X[i],X[i]])
+        Yd.extend([Y[i],Y[i]])
+    U = Ud; V=Vd; X=Xd; Y = Yd;
+    '''
+    EVPAs = [np.array([U[i][0],V[i][0],W[i][0]]) for i,u in enumerate(U)]
+    EVPAorigs = [np.array([U[i][1],V[i][1],W[i][1]]) for i,u in enumerate(U)]
+    EVPAsky = [np.cross(n,np.cross(EVPA,n)) for EVPA in EVPAs]
+    EVPAorigsky = [np.cross(n,np.cross(EVPA,n)) for EVPA in EVPAorigs]
+    vsky = np.cross(n,np.cross(v,n))
+    angles = [np.arccos(np.dot(vsky,EVPAsky[i])/(np.sqrt(np.dot(vsky,vsky))*np.sqrt(np.dot(EVPAsky[i],EVPAsky[i]))))*(180/np.pi) for i, ting in enumerate(EVPAsky)]
+    angles_orig = [np.arccos(np.dot(vsky,EVPAorigsky[i])/(np.sqrt(np.dot(vsky,vsky))*np.sqrt(np.dot(EVPAorigsky[i],EVPAorigsky[i]))))*(180/np.pi) for i, ting in enumerate(EVPAorigsky)]
+    '''
 
 
     #Now find mean and std of arrows:
@@ -94,8 +119,9 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = False):
     xestat_mean = np.mean(np.array(U)[:,1])
     yestat_mean = np.mean(np.array(V)[:,1])
 
-    #return (xe_mean,ye_mean),(xestat_mean,yestat_mean)
-
+    return (xe_mean,ye_mean),(xestat_mean,yestat_mean)
+    '''
+    '''
     colormap = cm.inferno
 
     fig = plt.figure(figsize=(6, 6)) #plot means with jet direction also
@@ -114,6 +140,7 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = False):
     '''
     if plot:
         colors = np.array([0.7,0.1]) #orange is after doppler dep, black is no doppler dep (B field stationary)
+        vcolors = np.array([0.5,0.5])
 
         #norm = Normalize()
         #norm.autoscale(colors)
@@ -125,21 +152,32 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = False):
         fig = plt.figure()
         ax = fig.add_subplot(111)
         for i, item in enumerate(U):
-            ax.quiver(X[i], Y[i], U[i], V[i],color=colormap(colors))
-        ax.set_xlabel('x')
+            if not i:
+                ax.quiver(X[i][0], Y[i][0],U[i][0],V[i][0],color=colormap(colors[0]),label='EVPA')
+                ax.quiver(X[i][1], Y[i][1],U[i][1],V[i][1],color=colormap(colors[1]),label='EVPA_orig')
+            else:
+                ax.quiver(X[i], Y[i],U[i],V[i],color=colormap(colors))
+        colormap = cm.Greens
+        ax.quiver(Xv, Yv,Uv,Vv,color=colormap(vcolors),label='Jet Projection')
+        ax.set_xlabel('$\phi$ [deg]')
         ax.set_ylabel('y')
-        ax.set_xlim([-0.1, 2.1])
-        ax.set_ylim([-0.5, 3.5])
+        ax.set_xlim([-70, 360])
+        ax.set_ylim([-20, 20])
+        plt.text(0, 35, '$\Gamma =$ {}'.format(Gamma), fontsize=12)
+        #plt.legend(fontsize=10, loc=4)
         plt.show()
 
 #Some different sets of B - fields here to test out
 import random
 random_B_set = [[random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)] for i in range(50000)]
 random_B_set2 = [[1,0,0],[0,1,0],[1,1,0],[-1,1,0],[-1,-1,0],[1,1,1],[2,-1,1],[3,-4,-2],[-5,1,1],[0,0,1],[0,1,1],[1,0,1],[1,1,5],[5,1,5]]
-theta_obs = 5.0 * np.pi/180
+theta_obs = 4.0 * np.pi/180
+v = [np.sin(theta_obs),0,np.cos(theta_obs)]
 c_helix = 1
 R = 1
 helical_set = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/8),R*np.cos(i*np.pi/8),R*np.sin(theta_obs)*np.sin(i*np.pi/8)+c_helix*np.cos(theta_obs)] for i in range(17)]
+#helical_setUP = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/8),R*np.cos(i*np.pi/8),R*np.sin(theta_obs)*np.sin(i*np.pi/8)+c_helix*np.cos(theta_obs)] for i in range(17)]
+
 
 def depol_mean(v,Gamma,n = [0,0,1],plot = False):
     U_mean = [[] for item in range(20)]
@@ -149,9 +187,94 @@ def depol_mean(v,Gamma,n = [0,0,1],plot = False):
         U_mean[i], V_mean[i] = zip(*depol_plot(random_B_set,v,Gamma,n))
 
     v = np.array(v) / np.sqrt(np.dot(v,v))
-    ev_mean = np.mean(abs(np.array(U_mean)[:,0]*v[0]+np.array(V_mean)[:,0]*v[1])) #mean of e component along v
-    estatv_mean = np.mean(abs(np.array(U_mean)[:,1]*v[0]+np.array(V_mean)[:,1]*v[1])) #mean of e_stat along v
+    ev_mean = np.mean(abs(np.array(U_mean)[:,0])) #mean of e component along v
+    estatv_mean = np.mean(abs(np.array(U_mean)[:,1])) #mean of e_stat along v
 
     evperp_mean = np.mean(abs(np.array(V_mean)[:,0]))
     evstatperp_mean = np.mean(abs(np.array(V_mean)[:,1]))
     return ev_mean,estatv_mean,evperp_mean,evstatperp_mean
+
+#plotting gamma vs angle of EVPA to v
+def depol_graph(B,v,Gamma,n = [0,0,1]):
+    B = np.array(B) # B input is given as list of lists now]
+    v = np.array(v)
+    n = np.array(n)
+
+    U = [[] for item in Gamma]
+    V = [[] for item in Gamma]
+    W = [[] for item in Gamma]
+    for i,item in enumerate(U):
+        U[i], V[i], W[i] = zip(*Dop_Dep(B,v,Gamma[i],n))
+    return U,V,W
+
+Gamma = [i for i in range(1,202)]
+theta_obs = 4.0 * np.pi/180
+v = [np.sin(theta_obs),0,np.cos(theta_obs)]
+ths = [0.1,np.pi/8,np.pi/4,3*np.pi/8,np.pi/2*0.99,(np.pi-0.1),5*np.pi/8,3*np.pi/4,7*np.pi/8]
+#B = [[np.cos(th),np.sin(th),1.5] for th in ths]
+#B = [[random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)] for i in range(10)]
+c_helix = 1
+R = 1
+B = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/9),R*np.cos(i*np.pi/9),R*np.sin(theta_obs)*np.sin(i*np.pi/9)+c_helix*np.cos(theta_obs)] for i in range(18)]
+fig = plt.figure(1)
+plt.xlabel('$\Gamma$')
+plt.ylabel('EVPA [deg] (cyan $\phi = 0$, blue $\phi = 120$)')
+plt.title('$\Theta_{obs} = 4.0\circ$, B helical')
+axes = plt.gca()
+axes.set_xlim([-0.1, 100])
+axes.set_ylim([-90.1, 90.1])
+for i,b in enumerate(B):
+    U,V,_ = depol_graph(b,v,Gamma,n = [0,0,1])
+    vectors = [np.array([U[i][0],V[i][0]]) for i, ting in enumerate(U)]
+    angles = [np.arctan(vector[1]/vector[0])*(180/np.pi) for vector in vectors]
+    #angles = [np.arccos(np.dot(np.array([1,0]),vector)/(np.sqrt(np.dot(vector,vector))))*(180/np.pi) for vector in vectors]
+    if not i:
+        plt.plot(Gamma, angles,color='c',linewidth=1.2)
+    elif i == 6:
+        plt.plot(Gamma, angles,color='b',linewidth=1.2)
+    else:
+        plt.plot(Gamma, angles,color=(0.98,0.43,0),linewidth=1.2)
+    plt.plot([-1, 1], [np.arctan(V[0][1]/U[0][0])*(180/np.pi) , np.arctan(V[0][1]/U[0][0])*(180/np.pi) ], color='k', linestyle='-', linewidth=2)
+plt.plot([1/theta_obs,1/theta_obs],[-89.5,89.5],color='r',linestyle='-.',linewidth=2,label='$\Gamma = 1/\Theta_{obs}$')
+#plt.plot([1,1],[-89.5,89.5],color='g',linestyle='--',linewidth=1,label='r$\Gamma = 1$')
+plt.plot([4,4],[-89.5,89.5],color='b',linestyle='--',linewidth=1.3,label='$\Gamma = 4$')
+plt.plot([10,10],[-89.5,89.5],color='g',linestyle='--',linewidth=1.3,label='$\Gamma = 10$')
+plt.plot([90,90],[-89.5,89.5],color='m',linestyle='--',linewidth=1.3,label='$\Gamma = 90$')
+plt.legend(loc=1)
+    #can +90 to angles if want jet axis to be at theta=90
+
+
+Gamma = [i for i in range(1,101)]
+theta_obs = 4.0 * np.pi/180
+v = [1,0,0]
+ths = [0.1,np.pi/8,np.pi/4,3*np.pi/8,np.pi/2*0.99,(np.pi-0.1),5*np.pi/8,3*np.pi/4,7*np.pi/8]
+#B = [[np.cos(th),np.sin(th),1.5] for th in ths]
+#B = [[random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)] for i in range(10)]
+c_helix = 1
+R = 1
+#B = [[c_helix,R*np.cos(i*20 * np.pi/180),R*np.sin(i*20*np.pi/180)] for i in range(19)]
+B = [[c_helix,R*np.cos(i * np.pi/8),R*np.sin(i*np.pi/8)] for i in range(17)]
+phis = [i*180/8 for i in range(17)]
+n = [np.cos(theta_obs),0,np.sin(theta_obs)]
+fig = plt.figure(2)
+plt.xlabel('$\Gamma$')
+plt.ylabel('EVPA [deg]')
+plt.title('$\Theta_{obs} = 4.0\circ$, B helical')
+for j,b in enumerate(B):
+    U,V,W = depol_graph(b,v,Gamma,n = [np.cos(theta_obs),0,np.sin(theta_obs)])
+    EVPAs = [np.array([U[i][0],V[i][0],W[i][0]]) for i,u in enumerate(U)]
+    EVPAorigs = [np.array([U[i][1],V[i][1],W[i][1]]) for i,u in enumerate(U)]
+    EVPAsky = [np.cross(n,np.cross(EVPA,n)) for EVPA in EVPAs]
+    EVPAorigsky = [np.cross(n,np.cross(EVPA,n)) for EVPA in EVPAorigs]
+    vsky = np.cross(n,np.cross(v,n))
+    angles = [np.arccos(np.dot(vsky,EVPAsky[i])/(np.sqrt(np.dot(vsky,vsky))*np.sqrt(np.dot(EVPAsky[i],EVPAsky[i]))))*(180/np.pi) for i, ting in enumerate(EVPAsky)]
+    angles_orig = [np.arccos(np.dot(vsky,EVPAorigsky[0])/(np.sqrt(np.dot(vsky,vsky))*np.sqrt(np.dot(EVPAorigsky[0],EVPAorigsky[0]))))*(180/np.pi)]
+    print(vsky)
+    #print(angles[0])
+    #vectors = [np.array([U[i][0],V[i][0]]) for i, ting in enumerate(U)]
+    #angles = [-np.arctan(vector[1]/vector[0])*(180/np.pi) for vector in vectors]
+    plt.plot(Gamma, angles,'b')
+    plt.plot([1, 3], [angles_orig[0], angles_orig[0]], color='r', linestyle='-', linewidth=1)
+    plt.plot([1/theta_obs,1/theta_obs],[0.5,179.5],color='g',linestyle='--',linewidth=1)
+
+#need to evaluate angles in plane where n is the norm (this is the new plane of the sky)

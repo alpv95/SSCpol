@@ -65,17 +65,17 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     }
     
     //enter the parameters from the jets paper
-    double W_j=3.0E37;  //W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
+    double W_j=3E37;  //3e37//W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
     double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
-    double B=8E-5, B0=8E-5;  //0.000268; //B-field at jet base
+    double B=8E-5, B0=8E-5;  //8e-5//0.000268; //B-field at jet base
     double R0 = 0.0, R=0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well
     double R_prev=0.0, B_prev=0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume
     double E_min = 5.11E6; // Minimum electron energy
-    double E_max=50E9;//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV
-    double alpha=1.9;//1.95//2.000001; // PL index of electrons
-    double theta_open_p = 50.0;//*(M_PI/180.0); // opening angle of the jet in the fluid frame
-    double theta_obs=6.5; //3.0;//*(M_PI/180.0); // observers angle to jet axis in rad
-    double gamma_bulk=16.5;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
+    double E_max=50E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV
+    double alpha=1.95;//1.9//1.95//2.000001; // PL index of electrons
+    double theta_open_p = 50.0;//50//*(M_PI/180.0); // opening angle of the jet in the fluid frame
+    double theta_obs=4.0; //4//3.0;//*(M_PI/180.0); // observers angle to jet axis in rad
+    double gamma_bulk=7.5;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
 
     printf("%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", W_j, gamma_bulk, theta_obs, B, B0, E_max, alpha);
 
@@ -285,7 +285,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     int helix_counter;
     sscanf(argv[2], "%d", &helix_counter); //taking input from command line how many 'days' we have been observing
     //parameters for helix
-    double t_helix = helix_counter*M_PI/8; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
+    double t_helix = helix_counter*M_PI/16; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
     //Pi constant decided how quickly we sample along the helix -> timescale
     double phi_helix = 0; //phase shift, just an initial condition
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
