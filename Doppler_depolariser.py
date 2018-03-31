@@ -278,3 +278,35 @@ for j,b in enumerate(B):
     plt.plot([1/theta_obs,1/theta_obs],[0.5,179.5],color='g',linestyle='--',linewidth=1)
 
 #need to evaluate angles in plane where n is the norm (this is the new plane of the sky)
+
+jet_bias_obs = []
+jet_bias_orig = []
+
+for Gamma in range(2,100):
+    random_B_set = [[random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)] for i in range(50000)]
+    print(Gamma)
+    PA_obs = []
+    PA_orig = []
+    for b in random_B_set:
+        e, e_orig = (Dop_Dep(np.array(b),np.array(v), Gamma, n = np.array([0,0,1])))
+        if not math.isnan(e[0]) and not math.isnan(e[1]) and not math.isnan(e_orig[0]) and not math.isnan(e_orig[1]):
+            PA_orig.append(e_orig)
+            PA_obs.append(e)
+
+    jet_bias_obs.append(np.std(np.array(PA_obs)[:,0]) - np.std(np.array(PA_obs)[:,1]))
+    jet_bias_orig.append(np.std(np.array(PA_orig)[:,0]) - np.std(np.array(PA_orig)[:,1]))
+
+plt.figure(1)
+plt.plot(range(2,100),jet_bias_obs,color='orange',label='DPAR')
+plt.plot(range(2,100),jet_bias_orig,color='k',label='Original')
+plt.plot([1/theta_obs,1/theta_obs],[-0.005,0.055],color='r',linestyle='-.',linewidth=1.6,label='$\Gamma = 1/\Theta_{obs}$')
+plt.ylabel('EVPA bias along jet axis')
+plt.xlabel('$\Gamma$')
+plt.title('$\Theta_{obs} = 4.0^{\circ}$')
+plt.legend()
+
+
+#print(sum(PA_obs)/50000)
+#print(sum(PA_orig)/50000)
+#print(np.std(np.array(PA_obs)[:,0]) - np.std(np.array(PA_obs)[:,1]))
+#print(np.std(np.array(PA_orig)[:,0]) - np.std(np.array(PA_orig)[:,1]))

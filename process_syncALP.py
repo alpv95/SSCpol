@@ -369,11 +369,11 @@ with open('O3Gamma_Photons100GeV_theta5.txt', 'a') as f:
 EVPA_tot = 0
 Pol_tot = 0
 #____________________________________________#
-'''
+
 with open('EVPA+Pol.txt', 'a') as f:
     f.write('%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n' % (EVPA_tot,EVPA_tot_opt,EVPA_tot_rad,EVPA_tot_gam,Pol_tot,Pol_tot_opt,Pol_tot_rad,Pol_tot_gam))
 print("SUCCESS")
-'''
+
 '''_____________________________________________'''
 
 
@@ -424,7 +424,7 @@ plt.xticks(size='12')
 plt.show()'''
 
 '''-----Plot with SED and polarisations----'''
-
+'''
 fig = plt.figure()
 # set height ratios for sublots
 gs = gridspec.GridSpec(3, 1, height_ratios=[1,1,2])
@@ -475,7 +475,7 @@ yticks[-2].label1.set_visible(False)
 
 plt.subplots_adjust(hspace=.0)
 plt.show()
-
+'''
 '''
 fig = plt.figure(figsize=(4,2))
 ax1 = fig.add_axes([0.1, 0.5, 0.8, 0.4])

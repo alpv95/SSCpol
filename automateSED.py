@@ -4,17 +4,19 @@ import subprocess
 import sys
 
 subprocess.call(['gcc', 'jet_synconlyALPWFlux.c', 'jet_fns.c', 'jet_fns.h'])
-for i in range(1):
+for i in range(100):
+    print(i)
     EVPA_rotation = 0
-    if (i>=20) and (i<60):
-        EVPA_rotation = 1
-    DD = 1
+    #if (i>=20) and (i<60):
+        #EVPA_rotation = 1
+    DD = 0
     #else:
         #EVPA_rotation = 0
     subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD)])
     subprocess.call(['python','process_syncALP.py'])
 
-
+#1737
+#1837
 '''
 import numpy as np
 keydat = np.loadtxt('keyparams.txt')
