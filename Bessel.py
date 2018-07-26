@@ -36,6 +36,16 @@ def pol2(x):
     int = integrate.quad(func, 0, 10)
     return int[0]
 
+def pol3(x):
+    func = lambda z: F(z)*z**(-1/2)
+    int = integrate.quad(func, 0, 1000000)
+    return int[0]
+
+def pol4(x):
+    func = lambda z: G(z)*z**(-1/2)
+    int = integrate.quad(func, 0, 1000000)
+    return int[0]
+
 
 
 '''def INT3(f, a, b, N):

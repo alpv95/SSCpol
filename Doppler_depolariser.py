@@ -1,5 +1,6 @@
 __author__ = 'ALP'
 import math as math
+import random
 import numpy as np
 def cross(a, b):
     c = [a[1]*b[2] - a[2]*b[1],
@@ -48,7 +49,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 
-def depol_plot(B,v,Gamma,n = [0,0,1],plot = True):
+def depol_plot(B,v,Gamma,n = [0,0,1],plot = True,double=False):
     B = [np.array(item) for item in B] # B input is given as list of lists now]
     v = np.array(v)
     n = np.array(n)
@@ -84,19 +85,21 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = True):
             Y[i] = (2.5,2.5)
 
     #add jet axis arrow
-    Xv = (-50,-50)
-    Yv = (0,0)
-    Uv = (v[0],-v[0])
-    Vv = (v[1],-v[1])
+
+    Xv = (-50)
+    Yv = (0)
+    Uv = (v[0])
+    Vv = (v[1])
 
     #for double ended arrows:
-    Ud = []; Vd = []; Xd = []; Yd=[]
-    for i,ting in enumerate(U):
-        Ud.extend([U[i],(-U[i][0],-U[i][1])])
-        Vd.extend([V[i],(-V[i][0],-V[i][1])])
-        Xd.extend([X[i],X[i]])
-        Yd.extend([Y[i],Y[i]])
-    U = Ud; V=Vd; X=Xd; Y = Yd;
+    if double:
+        Ud = []; Vd = []; Xd = []; Yd=[]
+        for i,ting in enumerate(U):
+            Ud.extend([U[i],(-U[i][0],-U[i][1])])
+            Vd.extend([V[i],(-V[i][0],-V[i][1])])
+            Xd.extend([X[i],X[i]])
+            Yd.extend([Y[i],Y[i]])
+        U = Ud; V=Vd; X=Xd; Y = Yd;
     '''
     EVPAs = [np.array([U[i][0],V[i][0],W[i][0]]) for i,u in enumerate(U)]
     EVPAorigs = [np.array([U[i][1],V[i][1],W[i][1]]) for i,u in enumerate(U)]
@@ -149,7 +152,7 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = True):
 
         colormap = cm.inferno
 
-        fig = plt.figure()
+        fig = plt.figure(1)
         ax = fig.add_subplot(111)
         for i, item in enumerate(U):
             if not i:
@@ -165,6 +168,34 @@ def depol_plot(B,v,Gamma,n = [0,0,1],plot = True):
         ax.set_ylim([-20, 20])
         plt.text(0, 35, '$\Gamma =$ {}'.format(Gamma), fontsize=12)
         #plt.legend(fontsize=10, loc=4)
+        fig2 = plt.figure(2)
+        PA_D = np.arctan2(np.array(V)[:,0],np.array(U)[:,0])
+        PA_orig = np.arctan2(np.array(V)[:,1],np.array(U)[:,1])
+        for i,pa in enumerate(PA_D[:4]):
+            if pa > np.pi/2:
+                PA_D[i] -= 2*np.pi
+        for i,pa in enumerate(PA_orig[:4]):
+            if pa > np.pi/2:
+                PA_orig[i] -= 2*np.pi
+
+        gradients = []
+        for i,pa in enumerate(PA_D):
+            if i <= len(PA_D)-3:
+                gradients.append(np.polyfit([0,1,2],PA_D[i:i+3],1)[0])
+        slope_param = min(gradients)/max(gradients)
+
+        gradients = []
+        for i,pa in enumerate(PA_orig):
+            if i <= len(PA_orig)-3:
+                gradients.append(np.polyfit([0,1,2],PA_orig[i:i+3],1)[0])
+        slope_param_orig = min(gradients)/max(gradients)
+
+
+        plt.plot(range(len(PA_D)),PA_D,color='orange')
+        plt.plot(range(len(PA_D)),PA_orig,color='black')
+        print(slope_param)
+        print(slope_param_orig)
+
         plt.show()
 
 #Some different sets of B - fields here to test out
@@ -175,7 +206,7 @@ theta_obs = 4.0 * np.pi/180
 v = [np.sin(theta_obs),0,np.cos(theta_obs)]
 c_helix = 1
 R = 1
-helical_set = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/8),R*np.cos(i*np.pi/8),R*np.sin(theta_obs)*np.sin(i*np.pi/8)+c_helix*np.cos(theta_obs)] for i in range(17)]
+helical_set = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/9),R*np.cos(i*np.pi/9),R*np.sin(theta_obs)*np.sin(i*np.pi/9)+c_helix*np.cos(theta_obs)] for i in range(18)]
 #helical_setUP = [[c_helix*np.sin(theta_obs)-R*np.cos(theta_obs)*np.sin(i*np.pi/8),R*np.cos(i*np.pi/8),R*np.sin(theta_obs)*np.sin(i*np.pi/8)+c_helix*np.cos(theta_obs)] for i in range(17)]
 
 
@@ -278,3 +309,92 @@ for j,b in enumerate(B):
     plt.plot([1/theta_obs,1/theta_obs],[0.5,179.5],color='g',linestyle='--',linewidth=1)
 
 #need to evaluate angles in plane where n is the norm (this is the new plane of the sky)
+
+#Calculation of EVPA.jet axis bias ----------------------
+plt.figure(1)
+gamma_hist = []
+bias_hist = []
+dpar_stdGAMav = []
+stat_stdGAMav = []
+for i in range(500):
+    B = []
+    x = 0
+    for i in range(127):
+        x = [random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)]
+        if x[0] == 0 and x[1] == 0 and x[2] == 0:
+            x = [random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)]
+            if x[0] == 0 and x[1] == 0 and x[2] == 0:
+                x = [random.randint(-50,50),random.randint(-50,50),random.randint(-50,50)]
+        B.append(x)
+
+    theta_obs = 4.0 * np.pi/180
+    v = [np.sin(theta_obs),0,np.cos(theta_obs)]
+    Gamma = [i for i in range(1,101)]
+    dpar_stdGAM = []
+    stat_stdGAM = []
+    for G in Gamma:
+        dpar_std = 0
+        stat_std = 0
+        E_DPAR = []
+        E_stat = []
+        for b in B:
+            e_dpar, e_stat = Dop_Dep(np.array(b),np.array(v), G, n = np.array([0,0,1]))
+            E_DPAR.append(e_dpar)
+            E_stat.append(e_stat)
+        E_DPAR = np.array(E_DPAR)
+        E_stat = np.array(E_stat)
+        #dpar_std = np.std(E_DPAR[:,0]) - np.std(E_DPAR[:,1])
+        #stat_std = np.std(E_stat[:,0]) - np.std(E_stat[:,1])
+        dpar_std = np.mean(E_DPAR[:,0]**2) - np.mean(E_DPAR[:,1]**2)
+        stat_std = np.mean(E_stat[:,0]**2) - np.mean(E_stat[:,1]**2)
+        dpar_stdGAM.append(dpar_std)
+        stat_stdGAM.append(stat_std)
+
+    dpar_stdGAMav.append(dpar_stdGAM)
+    stat_stdGAMav.append(stat_stdGAM)
+
+dpar_stdGAMav = np.array(dpar_stdGAMav)
+stat_stdGAMav = np.array(stat_stdGAMav)
+
+#plt.plot(Gamma[np.argmax(dpar_stdGAM[:13])],dpar_stdGAM[np.argmax(dpar_stdGAM[:13])],'xb')
+plt.plot(Gamma,np.mean(stat_stdGAMav,0),'k',label='No DPAR')
+plt.plot(Gamma,np.mean(dpar_stdGAMav,0),color=(255/255,110/255,0),label='DPAR')
+plt.plot([1/theta_obs,1/theta_obs],[-0.01,0.08],color='r',linestyle='--',linewidth=1,label=r'$1/\Theta_{obs}$')
+plt.xlabel(r'$\Gamma$')
+plt.ylabel(r'$(EVPA.\mathbf{\hat{x}})^2 - (EVPA.\mathbf{\hat{y}})^2$')
+plt.legend(loc='upper right')
+
+
+
+#ANd for histogram plotting:
+gamma_hist.append(Gamma[np.argmax(dpar_stdGAM[:13])])
+bias_hist.append(dpar_stdGAM[np.argmax(dpar_stdGAM[:13])])
+
+
+# fixed bin size
+gamma_hist = np.array(gamma_hist)
+bias_hist = np.array(bias_hist)
+bins_gam = np.arange(1, 14) # fixed bin size
+bins_bias = np.arange(-5, 40,5)/100
+
+plt.figure(2)
+plt.hist(gamma_hist, bins=bins_gam)
+plt.xlabel('Gamma (bin size = 1)')
+plt.ylabel('count')
+
+plt.figure(3)
+plt.hist(bias_hist, bins=bins_bias)
+plt.xlabel('Bias (bin size = 0.05)')
+plt.ylabel('count')
+
+plt.show()
+
+
+
+gradients = []
+for i,pa in enumerate(y):
+    if i <= len(y)-4:
+        gradients.append(np.polyfit(x[i:i+4],y[i:i+4],1)[0])
+print(gradients)
+slope_param = max(gradients)/min(gradients)
+print(slope_param)

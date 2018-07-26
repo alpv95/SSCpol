@@ -424,36 +424,74 @@ plt.xticks(size='12')
 plt.show()'''
 
 '''-----Plot with SED and polarisations----'''
+'''
+for i,f in enumerate(fq_mids):
+    if freqtoeV(f) > 1.5E2 and freqtoeV(f) < 2.5E2:
+        P_detected[i] = (P_detected[i-1] + P_detected[i+1])/2
+for i,f in enumerate(fq_mids_IC):
+    if freqtoeV(f) > 2.5E11 and freqtoeV(f) < 3.5E11:
+        P_detected_IC[i] = (P_detected_IC[i-1] + P_detected_IC[i+1])/2
+'''
 
-fig = plt.figure()
+#np.savetxt('POL3.txt',Pol)
+#np.savetxt('EVPA3.txt',EVPA)
+'''
+with open('EVPA3.txt', 'a') as f:
+    for i in range(len(EVPA)):
+        if i == len(EVPA)-1:
+            f.write('%.4lf\n' % (EVPA[i]))
+        else:
+            f.write('%.4lf\t' % (EVPA[i]))
+
+with open('POL3.txt', 'a') as f:
+    for i in range(len(Pol)):
+        if i == len(Pol)-1:
+            f.write('%.4lf\n' % (Pol[i]))
+        else:
+            f.write('%.4lf\t' % (Pol[i]))
+
+print("SUCCESS")
+'''
+
+
+#np.savetxt('PSYNC3.txt',P_detected)
+#np.savetxt('PIC3.txt',P_detected_IC)
+#np.savetxt('FREQSYNC3.txt',fq_mids)
+#np.savetxt('FREQIC3.txt',fq_mids_IC)
+
+
+fig = plt.figure(1)
 # set height ratios for sublots
 gs = gridspec.GridSpec(3, 1, height_ratios=[1,1,2])
 # the fisrt subplot
 ax0 = plt.subplot(gs[0])
 # log scale for axis X of the first subplot
+ax0.set_title('$W_j=3*10^{37}W$, $L_{jet} = 5*10^{20}m$, $B_0=8*10^{-5}T$, $E_{max}=50*10^9eV$,\n' + r'$\alpha=1.95$, $\theta_{opening} = 9^{\circ}$, $\theta_{obs}=4.0^{\circ}$, $\gamma_{bulk}=7.5$')
 ax0.set_xscale("log")
 ax0.set_xlim([1E-6, 1E13])
 ax0.set_ylim([0, 1.0])
-ax0.set_ylabel(r'$\Pi(\omega)$', size='14')
-line0 = ax0.plot(freqtoeV(fq_mids), Pol,'b',label='Full Jet')
-line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
+ax0.set_ylabel(r'$\Pi(\omega)$', size='13')
+line0 = ax0.plot(freqtoeV(fq_mids), Pol,'m',label='Pol Fraction')
+#line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
 #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
-ax0.text(100,0.6,'$\Pi_{optical} =$ %.5f' % Pol_tot_opt, fontsize=10)
-ax0.text(100,0.8,'$\Pi_{rad} =$ %.5f' % Pol_tot_rad, fontsize=10)
-ax0.text(100,0.95,'$\Pi_{gamma} =$ %.5f' % Pol_tot_gam, fontsize=10)
-ax0.text(100,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
+ax0.text(1E7,0.3,'$\Pi_{optical} =$ %.4f' % Pol_tot_opt, fontsize=10)
+ax0.text(1E7,0.1,'$\Pi_{radio} =$ %.4f' % Pol_tot_rad, fontsize=10)
+ax0.text(1E7,0.45,'$\Pi_{x-ray} =$ %.4f' % Pol_tot_gam, fontsize=10)
+#ax0.text(100,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
 
 ax0.legend()
 #subplot for the EVPA
 ax05 = plt.subplot(gs[1], sharex = ax0)
-line05 = ax05.plot(freqtoeV(fq_mids), EVPA, color='g',label='EVPA')
+line05 = ax05.plot(freqtoeV(fq_mids), np.array(EVPA)*180/np.pi, color='g',label='EVPA')
 #ax05.set_yscale("log")
 ax05.set_xlim([1E-6, 1E13])
-ax05.set_ylim([-1.58, 1.58])
+#ax05.set_ylim([-1.58, 1.58])
+ax05.set_ylim([-90, 90])
 yticks = ax05.yaxis.get_major_ticks()
-ax05.text(100,-0.15,'$EVPA_{optical} =$ %.5f' % EVPA_tot_opt, fontsize=10)
-ax05.text(100,-0.65,'$EVPA_{radio} =$ %.5f' % EVPA_tot_rad, fontsize=10)
-ax05.text(100,0.9,'$EVPA_{gamma} =$ %.5f' % EVPA_tot_gam, fontsize=10)
+ax05.text(1E7,-0.65*180/np.pi,'$EVPA_{optical} =$ %.4f' % (EVPA_tot_opt*180/np.pi), fontsize=10)
+ax05.text(1E7,-1.2*180/np.pi,'$EVPA_{radio} =$ %.4f' % (EVPA_tot_rad*180/np.pi), fontsize=10)
+ax05.text(1E7,-0.1*180/np.pi,'$EVPA_{x-ray} =$ %.4f' % (EVPA_tot_gam*180/np.pi), fontsize=10)
+ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='13')
 ax05.legend()
 #the second subplot
 # shared axis X
@@ -461,19 +499,21 @@ ax1 = plt.subplot(gs[2], sharex = ax0)
 line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
 line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
 line5 = ax1.plot(ph_energy_MK501[0:30], flux_MK501[0:30], 'k.', label='data 2008-2009')
-line6 = ax1.plot(ph_energy_MK421[0:30], flux_MK421[0:30], 'g.', label='data 2008-2009')
-line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
+#line6 = ax1.plot(ph_energy_MK421[0:30], flux_MK421[0:30], 'g.', label='data 2008-2009')
+#line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
 ax1.set_yscale('log')
 ax1.set_ylim([1E-14, 9.99E-10])
 ax1.set_xlim([1E-6, 1E13])
-ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='14')
-ax1.set_xlabel('eV', size='14')
+ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='13')
+ax1.set_xlabel('eV', size='13')
+ax1.legend()
 plt.setp(ax0.get_xticklabels(), visible=False)
 # remove last tick label for the second subplot
 yticks = ax1.yaxis.get_major_ticks()
 yticks[-2].label1.set_visible(False)
 
 plt.subplots_adjust(hspace=.0)
+#fig.savefig('/Users/ALP/Desktop/DD'+str(10)+'.png')
 plt.show()
 
 '''

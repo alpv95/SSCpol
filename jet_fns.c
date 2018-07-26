@@ -954,3 +954,29 @@ double DD_Beffective(double a, double b, double c, double v1, double v2, double 
   return Proj_theta_Beff;
 
 }
+
+int rand_lim(int limit) {
+  /* return a random number between 0 and limit inclusive.
+                                                                */
+
+  int divisor = RAND_MAX/(limit+1);
+  int retval;
+
+  do {
+      retval = rand() / divisor;
+  } while (retval > limit);
+
+  return retval;
+  }
+
+double theta_X(double theta_tot, double theta_circ) {
+  /*    */
+  double theta_x = asin(sin(theta_tot)/sqrt(1+1/(tan(theta_circ)*tan(theta_circ))));
+  return theta_x;
+  }
+
+double theta_Y(double theta_tot, double theta_circ) {
+  /*    */
+  double theta_y = asin(sin(theta_tot)*cos(theta_circ));
+  return theta_y;
+  }
