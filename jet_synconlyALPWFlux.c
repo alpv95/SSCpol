@@ -177,6 +177,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double j[array_size]; // emissivity per Hz per unit volume
     double k[array_size]; // opacity, units of m^-1
     double Ps_per_m[array_size]; // Synchrotron power per unit m
+    double Ps_per_m_elec[array_size];
+    double Ps_per_m_test[array_size];
     double Sync_losses[array_size];// store total electron energy losses
     double P_single[array_size];// power emitted by a single electron of energy E
 
@@ -420,17 +422,15 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             j[i] = j_per_hz(P_single[i], R, dN_dE[i], eps, f_c[i]);//*(R_next/R)*(R_next/R);//gives emissivity per unit frequency
 
             k[i] = k_new(j[i], eps, f_c[i]); //gives the corresponding opacity
-            Ps_per_m[i] = power_emitted(j[i], k[i], R)*M_PI*R*dfreqs[i]; //power per unit length assuming R roughly constant
-            Sync_losses[i] = Ps_per_m[i];
+            //Ps_per_m[i] = power_emitted(j[i], k[i], R)*M_PI*R*dfreqs[i]; //power per unit length assuming R roughly constant
+            //Ps_per_m[i] = P_single[i]*(2*M_PI*pow(9.11E-31,2)*pow(3E8,2))*dN_dE[i]*dfreqs[i]/(3E8*3*gamma_e[i]*1.6E-19*B);
+            //Ps_per_m[i] = P_single[i]*dN_dE[i]*E_elecs[i]*1.6E-19*dfreqs[i] / (2*f_c[i]*3E8);
+            //printf("Ps_per_m P_single %.5e\t%.5e\n", Ps_per_m[i],P_single[i]);
+            //Sync_losses[i] = Ps_per_m[i];
 
             //determine whether jet is optically thin or thick -> this part is incomplete
             R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
-            
-            
-            //photon energy density
-            urad_array[i] = 0.0; //initialise to avoid weird C bugs
-            urad_array[i] = Ps_per_m[i]/(2.0*M_PI*3.0E8*R);
-            u_rad += urad_array[i];
+
 
             //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval
 
@@ -440,18 +440,34 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 {
                     if ((f_pol[l]/f_c[i]) >= FG[m][0] && (f_pol[l]/f_c[i]) <= FG[m+1][0])
                     {
-                        P_perp[l] += B * FG[m+1][1] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l];     //power per unit frequency, have to *dfreq[j]
-                        P_para[l] += B * FG[m+1][2] * dN_dE[i]*dEe[i]*1.6E-19 * dfreqs_pol[l]; //*dx/l_c !!! (this happens further down) and * other constants
+                        P_perp[l] += (sqrt(3)*M_PI/(16*9.11E-31*pow(3E8,3)))*pow(1.6E-19,3) * B * FG[m+1][1] * dN_dE[i]*E_elecs[i]*1.6E-19 * dfreqs_pol[l] / (1E-7);     //power per unit frequency, have to *dfreq[j]
+                        P_para[l] += (sqrt(3)*M_PI/(16*9.11E-31*pow(3E8,3)))*pow(1.6E-19,3) * B * FG[m+1][2] * dN_dE[i]*E_elecs[i]*1.6E-19 * dfreqs_pol[l] / (1E-7) ; //*dx/l_c !!! (this happens further down) and * other constants
+                        Ps_per_m_elec[i] += (sqrt(3)*M_PI/(16*9.11E-31*pow(3E8,3)))*pow(1.6E-19,3) * B * (FG[m+1][1]+FG[m+1][2]) * dN_dE[i]*E_elecs[i]*1.6E-19 * dfreqs_pol[l] / (1E-7) ;
                     }
                     else if ((f_pol[l]/f_c[i]) <= FG[0][0] || (f_pol[l]/f_c[i]) >= FG[73][0])
                     {
                         P_perp[l] += 0.0;
                         P_para[l] += 0.0;
+                        Ps_per_m_elec[i] += 0.0;
                     }
                 }
             }
+            Sync_losses[i] = Ps_per_m_elec[i];
+            //printf("Ps_per_m Ps_per_me_elec %.5e\t%.5e\n", Ps_per_m[i], Ps_per_m_elec[i]);
 
         }
+
+        for (l=0; l<array_size; l++){
+            Ps_per_m[l] = P_perp[l] + P_para[l];
+            //printf("Ps_per_m_test %.5e\n",Ps_per_m_test[l]);
+            //photon energy density
+            urad_array[l] = 0.0; //initialise to avoid weird C bugs
+            urad_array[l] = Ps_per_m[l]/(2.0*M_PI*3.0E8*R);
+            u_rad += urad_array[l];
+        }
+
+
+
         //----------------- B-field projection onto sky for this section --------------//
         // Now have introduced R dependence on the random blocks as well, works just like for the helical case, just * R_old/R_new on c_0 term
         //now can also include doppler depolarisation, changing the B field to EFFECTIVE B fields which give correct perp E component as if it had
@@ -524,14 +540,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             f_c_IC[i] = 0.0;
             
             Ne_etot += Ne_e[i];
-            n_rad += urad_array[i] /(f_c[i]*6.63E-34);
-            f_c_IC[i] =gamma_e[i] * gamma_e[i] * f_c[i];
+            n_rad += urad_array[i] /(f_pol[i]*6.63E-34);
+            f_c_IC[i] =gamma_e[i] * gamma_e[i] * f_pol[i];
         }
         
         for (i=0; i<array_size; i++) //1.79
         {
             Ps_per_m_IC[i] = 0.0;
-            Ps_per_m_IC[i] = Ps_per_m[i] * 0.85 * (gamma_e[i] * gamma_e[i]) * (Ne_e[i] / Ne_etot) * (urad_array[i] /(f_c[i]*6.63E-34))/n_rad; //* 1.79 //3.3
+            Ps_per_m_IC[i] = Ps_per_m[i] * 0.85 * (gamma_e[i] * gamma_e[i]) * (Ne_e[i] / Ne_etot) * (urad_array[i] /(f_pol[i]*6.63E-34))/n_rad; //* 1.79 //3.3
             IC_losses[i] = Ps_per_m_IC[i];
         }
         
@@ -545,7 +561,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
         dx_R = 0.05*(R0+x*tan(deg2rad(theta_open_p)))/tan(deg2rad(theta_open_p)); //ensures Rnew <= 1.05 Rold
-        dx_P = (Ne_e[dx_set]*(E_elecs[dx_set]-E_elecs[dx_set-1])*1.6E-19)/(Ps_per_m[dx_set] + Ps_per_m_IC[dx_set]); //based on radiative losses
+        dx_P = (Ne_e[dx_set]*(E_elecs[dx_set]-E_elecs[dx_set-1])*1.6E-19)/(Ps_per_m_elec[dx_set] + Ps_per_m_IC[dx_set]); //based on radiative losses
         //printf("dx_R, dx_P \t%.5e\t%.5e \n", dx_P, (Ne_e[dx_set]*(E_elecs[dx_set]-E_elecs[dx_set-1])*1.6E-19)/(Ps_per_m[dx_set]));
   
         if (dx_R < dx_P)

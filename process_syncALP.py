@@ -182,7 +182,8 @@ print('required shape is:', np.shape(fcritdata))
 #print dx_steps
 
 P_detected = np.zeros(len(fq_mins)) #store all emitted power here
-P_detected_raw = np.zeros(len(fq_mins)) #as above for non opacity data
+#P_detected_raw = np.zeros(len(fq_mins)) #as above for non opacity data
+P_detected_raw = np.sum(powdata,0)
 
 
 
@@ -264,7 +265,7 @@ for i in range(nSecs):
                 counts +=1 
 #                print counts #tests for double counting
                 P_detected[k] += obs_power[i,j]
-                P_detected_raw[k] += powdata[i,j]
+                #P_detected_raw[k] += powdata[i,j]
 
 #Ptot_xerr=[np.log10(freqtoeV(fq_mids-fq_mins)), np.log10(freqtoeV(fq_maxs-fq_mids))]
 Ptot_xerr=[(freqtoeV(fq_mids-fq_mins)), (freqtoeV(fq_maxs-fq_mids))]
@@ -498,7 +499,8 @@ ax05.legend()
 ax1 = plt.subplot(gs[2], sharex = ax0)
 line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
 line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
-line5 = ax1.plot(ph_energy_MK501[0:30], flux_MK501[0:30], 'k.', label='data 2008-2009')
+line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
+line6 = ax1.plot(ph_energy_MK501[0:30], flux_MK501[0:30], 'k.', label='data 2008-2009')
 #line6 = ax1.plot(ph_energy_MK421[0:30], flux_MK421[0:30], 'g.', label='data 2008-2009')
 #line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
 ax1.set_yscale('log')
