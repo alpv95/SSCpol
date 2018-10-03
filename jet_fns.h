@@ -90,9 +90,18 @@ double IC_loss(double beta, double gamma, double Urad);
 double P_jet(double B, double gamma, double R, double beta);
 double P_jet(double B, double gamma, double R, double beta);
 double DD_Beffective(double a, double b, double c, double v1, double v2, double v3, double Gamma);
+void DD_3Beffective(double a, double b, double c, double v1, double v2, double v3, double Gamma, double *B_effective);
 int rand_lim(int limit);
 double theta_X(double theta_tot, double theta_circ);
 double theta_Y(double theta_tot, double theta_circ);
+double Z_perpperp(double cosk, double phik, double Btheta);
+double Z_perppara(double cosk, double phik, double Btheta);
+double Z_paraperp(double cosk, double phik, double Btheta);
+double Z_parapara(double cosk, double phik, double Btheta);
+double Z_e(double *_e, double *e, double *k, int perp);
+double Sigma_1(double E_elecs,double F_min, double dN_dE, double dEe );
+double Sigma_2(double E_elecs,double F_min, double dN_dE, double dEe );
+
 
 #endif
 

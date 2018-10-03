@@ -54,6 +54,17 @@ ICfreqdata = np.loadtxt('ICfreqfile.txt')*doppler_factor
 ##### Loading in Polarisation powers + theta for each block
 P_paraArray = np.loadtxt('Pparafile.txt')
 P_perpArray = np.loadtxt('Pperpfile.txt')
+P_paraArrayICinit = np.loadtxt('PparafileIC.txt') #need to turn this into 3D array
+P_perpArrayICinit = np.loadtxt('PperpfileIC.txt')
+ProjB_theta = np.loadtxt('Proj_Bfile.txt')
+P_paraArrayIC = np.zeros([ProjB_theta.shape[1],P_paraArrayICinit.shape[1],ProjB_theta.shape[0]])
+P_perpArrayIC = np.zeros([ProjB_theta.shape[1],P_paraArrayICinit.shape[1],ProjB_theta.shape[0]])
+for i,ting in enumerate(P_perpArrayIC[0,0,:]):
+    for k,ting in enumerate(P_perpArrayIC[:,0,0]):
+        P_perpArrayIC[k,:,i] = P_perpArrayICinit[k*(i+1),:]
+        P_paraArrayIC[k,:,i] = P_paraArrayICinit[k*(i+1),:]
+#P_paraArrayIC = np.reshape(P_paraArrayIC,[ProjB_theta.shape[1],P_paraArrayIC.shape[1],-1])
+#P_perpArrayIC = np.reshape(P_perpArrayIC,[ProjB_theta.shape[1],P_perpArrayIC.shape[1],-1])
 block_theta = np.loadtxt('block_thetafile.txt')
 Pol_single = np.loadtxt('Pol_single.txt') #for comparison
 ### First calculate initial electron PL population polarisation to compare with full dynamic pop.
@@ -64,7 +75,7 @@ for i,ting in enumerate(P_perpArray[0,:]):
     else:
         Pol_Init[i] = 1.0
 ### Then polarisation for each frequency interval for whole jet emission
-ProjB_theta = np.loadtxt('Proj_Bfile.txt')
+#ProjB_theta = np.loadtxt('Proj_Bfile.txt')
 
 # find the doppler factor for each block:
 doppler = 1.0/(gamma_bulk*(1.0-beta_bulk*np.cos(block_theta)))
@@ -78,6 +89,7 @@ P_para = P_paraArray.sum(axis=0) * (1/np.shape(ProjB_theta)[1]) * (doppler**4).s
 Stokes_para = [[np.array([math.cos(2*projB),math.sin(2*projB)])for projB in projB_row]for projB_row in ProjB_theta]
 Stokes_perp = [[np.array([math.cos(2*(projB-math.pi/2)),math.sin(2*(projB-math.pi/2))]) if projB >= -math.pi/2 else np.array([math.cos(2*(projB+3*math.pi/2)),math.sin(2*(projB+3*math.pi/2))]) for projB in ProjB_row] for ProjB_row in ProjB_theta]
 Stokes_total = [np.zeros(2) for i in P_perpArray[0,:]]
+Stokes_totalIC = [np.zeros(2) for i in P_perpArrayIC[0,:]]
 Stokes_totaltot = np.zeros(2) #Stokes for whole spectrum
 Stokes_total_radio = np.zeros(2) # Stokes for a band in the radio range
 Stokes_total_radio_denominator = 0
@@ -86,6 +98,8 @@ Stokes_total_optical_denominator = 0
 Stokes_total_gamma = np.zeros(2) #stokes for a band in the gamma range
 Stokes_total_gamma_denominator = 0
 Stokes_total_denominator = np.zeros(len(P_perpArray[0,:]))
+Stokes_total_denominatorIC = np.zeros(len(P_perpArrayIC[0,:]))
+
 '''
 for j, item in enumerate(P_perpArray[0,:]): #loop over number of frequency bins
     if (freqtoeV(fq_mids[j])>1.5) and (freqtoeV(fq_mids[j])<3.4):
@@ -114,6 +128,7 @@ for i, item2 in enumerate(P_perpArray[:,0]): #loop over number of jet segments
         #if fq_mids[j]*(1 - doppler[k]/doppler_factor) > (fq_mids[j]-fq_mids[j-1])/2:
         for j, item in enumerate(P_perpArray[0,:]): #loop over number of frequency bins
             j_newd = (np.abs(fq_mids-fq_mids[j]*doppler[k]/doppler_factor)).argmin() #adjusting for different doppler factor of each block, might need to use log nearest?? if too  grainy
+            j_newdIC = (np.abs(fq_mids_IC-fq_mids_IC[j]*doppler[k]/doppler_factor)).argmin()
 
             if (freqtoeV(fq_mids[j_newd])>1.5) and (freqtoeV(fq_mids[j_newd])<3.4):
                 Stokes_total_optical_denominator += (P_perpArray[i,j_newd] + P_paraArray[i,j_newd]) * (doppler[k]**4)
@@ -124,7 +139,11 @@ for i, item2 in enumerate(P_perpArray[:,0]): #loop over number of jet segments
             Stokes_total_denominator[j_newd] += (P_perpArray[i,j_newd] + P_paraArray[i,j_newd]) * (doppler[k]**4)
 
 
+
             Stokes_total[j_newd] += doppler[k]**4 * (P_perpArray[i,j_newd]*Stokes_perp[i][k] + P_paraArray[i,j_newd]*Stokes_para[i][k]) #dividing by number of blocks at the end here (assumes unifrm distr of electrons through jet segement)
+
+            Stokes_total_denominatorIC[j_newdIC] += (P_perpArrayIC[k,j_newdIC,i] + P_paraArrayIC[k,j_newdIC,i]) * (doppler[k]**4)
+            Stokes_totalIC[j_newdIC] += doppler[k]**4 * (P_perpArrayIC[k,j_newdIC,i]*Stokes_perp[i][k] + P_paraArrayIC[k,j_newdIC,i]*Stokes_para[i][k])
 
             #now include Polarisation in 3 different energy bands: radio,optical,gamma
             if (freqtoeV(fq_mids[j_newd])>1.5) and (freqtoeV(fq_mids[j_newd])<3.4):
@@ -140,9 +159,12 @@ Stokes_total_radio = Stokes_total_radio / Stokes_total_radio_denominator
 Stokes_total_gamma = Stokes_total_gamma / Stokes_total_gamma_denominator
 for i,item in enumerate(Stokes_total):
     Stokes_total[i] = Stokes_total[i] / Stokes_total_denominator[i]
+    Stokes_totalIC[i] = Stokes_totalIC[i] / Stokes_total_denominatorIC[i]
 
 Pol = [math.sqrt(item[0]**2 + item[1]**2) for item in Stokes_total]
 EVPA = [0.5*math.atan2(item[1],item[0]) for item in Stokes_total]
+PolIC = [math.sqrt(item[0]**2 + item[1]**2) for item in Stokes_totalIC]
+EVPAIC = [0.5*math.atan2(item[1],item[0]) for item in Stokes_totalIC]
 
 Pol_tot_opt = math.sqrt(Stokes_total_optical[0]**2 + Stokes_total_optical[1]**2)
 EVPA_tot_opt = 0.5*math.atan2(Stokes_total_optical[1],Stokes_total_optical[0])
@@ -184,6 +206,7 @@ print('required shape is:', np.shape(fcritdata))
 P_detected = np.zeros(len(fq_mins)) #store all emitted power here
 #P_detected_raw = np.zeros(len(fq_mins)) #as above for non opacity data
 P_detected_raw = np.sum(powdata,0)
+P_detected_rawIC = np.sum(ICpowdata,0)
 
 
 
@@ -473,6 +496,7 @@ ax0.set_xlim([1E-6, 1E13])
 ax0.set_ylim([0, 1.0])
 ax0.set_ylabel(r'$\Pi(\omega)$', size='13')
 line0 = ax0.plot(freqtoeV(fq_mids), Pol,'m',label='Pol Fraction')
+line01 = ax0.plot(freqtoeV(fq_mids_IC), PolIC,'r',label='Pol Fraction IC')
 #line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
 #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
 ax0.text(1E7,0.3,'$\Pi_{optical} =$ %.4f' % Pol_tot_opt, fontsize=10)
@@ -484,6 +508,7 @@ ax0.legend()
 #subplot for the EVPA
 ax05 = plt.subplot(gs[1], sharex = ax0)
 line05 = ax05.plot(freqtoeV(fq_mids), np.array(EVPA)*180/np.pi, color='g',label='EVPA')
+line051 = ax05.plot(freqtoeV(fq_mids_IC), np.array(EVPAIC)*180/np.pi, color='r',label='EVPAIC')
 #ax05.set_yscale("log")
 ax05.set_xlim([1E-6, 1E13])
 #ax05.set_ylim([-1.58, 1.58])
@@ -497,7 +522,7 @@ ax05.legend()
 #the second subplot
 # shared axis X
 ax1 = plt.subplot(gs[2], sharex = ax0)
-line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_IC, 'r-.', label='IC')#Inverse Compton
+line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_rawIC, 'r-.', label='ICRAW')#Inverse Compton
 line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
 line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
 line6 = ax1.plot(ph_energy_MK501[0:30], flux_MK501[0:30], 'k.', label='data 2008-2009')

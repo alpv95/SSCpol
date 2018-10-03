@@ -3,9 +3,9 @@
 import subprocess
 import sys
 
-subprocess.call(['gcc', 'jet_synconlyALPWFlux.c', 'jet_fns.c', 'jet_fns.h'])
+subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h'])
 for i in range(1):
-    EVPA_rotation = 0
+    EVPA_rotation = 1
     theta_obs=3.3
     DD = 1
     #if i>=150:
@@ -37,7 +37,7 @@ keydat = np.loadtxt('keyparams.txt')
 #theta_obs=keydat[2]
 #gamma_bulk = keydat[1]
 DD=1
-EVPA_rotation = 0
+EVPA_rotation = 1
 plot = 0
 id = 4197  #2161-2192 => 127blocks,NoRot; 2192-2224 => 127blocks,Rot;2225-2256 => 61blocks,NoRot;2257-2288 => 61blocks,Rot;
 #2289-

@@ -955,6 +955,40 @@ double DD_Beffective(double a, double b, double c, double v1, double v2, double 
 
 }
 
+/*Fn to calculate EFFECTIVE 3B-field due to doppler depolarisation, now also including z component along our line of sight for IC use */
+/* takes B-field and rotates it along plane containing velocity and line of sight by angle defined through Gamma and angle between velocity and line of sight*/
+void DD_3Beffective(double a, double b, double c, double v1, double v2, double v3, double Gamma, double *B_effective)
+{
+
+  double Blength = sqrt(a*a+b*b+c*c);
+  double vlength = sqrt(v1*v1+v2*v2+v3*v3);
+  double beta = sqrt(1-1/(Gamma*Gamma));
+  double B1, B2, B3, U, V;
+  a = a / (Blength); //Normalising B-field vectors
+  b = b / (Blength);
+  c = c / (Blength);
+  v1 = v1 / (vlength);
+  v2 = v2 / (vlength);
+  v3 = v3 / (vlength);
+
+
+  double th = acos((v3-beta)/(1-beta*v3)) - acos(v3);
+  U = -v2/sqrt(v1*v1+v2*v2);
+  V = v1/sqrt(v1*v1+v2*v2);
+  B1 = U*U*a + V*V*cos(th)*a + U*V*(1-cos(th))*b + V*sin(th)*c;
+  B2 = U*V*(1-cos(th))*a + V*V*b + U*U*cos(th)*b - U*sin(th)*c;
+  B3 = -V*sin(th)*a + U*sin(th)*b + (U*U+V*V)*cos(th)*c;
+
+  B_effective[0] = B1;
+  B_effective[1] = B2;
+  B_effective[2] = B3;
+
+  //Proj_theta_Beff = atan2(B2,B1);
+
+  //return Proj_theta_Beff;
+
+}
+
 int rand_lim(int limit) {
   /* return a random number between 0 and limit inclusive.
                                                                 */
@@ -979,4 +1013,61 @@ double theta_Y(double theta_tot, double theta_circ) {
   /*    */
   double theta_y = asin(sin(theta_tot)*cos(theta_circ));
   return theta_y;
+  }
+
+double Z_perpperp(double cosk, double phik, double Btheta) {
+  /* collision factor Z for Compton emission perpendicular to B-field with target photons polarised perp to B _field  */
+  return pow((sin(Btheta)*cosk-cos(Btheta)*sqrt(1-cosk*cosk)*cos(phik)-(1-cosk*cosk)*sin(phik)*sin(phik)*sin(Btheta)/(1-cosk))/sqrt(pow(sqrt(1-cosk*cosk)*sin(phik),2) + pow(cos(phik)*cos(Btheta)*sqrt(1-cosk*cosk) - cosk*sin(Btheta),2)),2);
+  }
+
+double Z_perppara(double cosk, double phik, double Btheta) { //still to do
+  /* collision factor Z for Compton emission perpendicular to B-field with target photons polarised perp to B _field  */
+  double e_mag = sqrt(pow((1-cosk*cosk)*pow(cos(phik),2)*sin(Btheta) + sqrt(1-cosk*cosk)*cos(phik)*cos(Btheta)*cosk-sin(Btheta),2) +
+                pow((1-cosk*cosk)*cos(phik)*sin(phik)*sin(Btheta) + sqrt(1-cosk*cosk)*sin(phik)*cos(Btheta)*cosk,2) +
+                pow(cosk*sqrt(1-cosk*cosk)*cos(phik)*sin(Btheta) + (cosk*cosk - 1)*cos(Btheta),2) );
+  return pow(((1-cosk*cosk)*cos(phik)*sin(phik)*sin(Btheta) + sqrt(1-cosk*cosk)*sin(phik)*cos(Btheta)*cosk + sqrt(1-cosk*cosk)*sin(phik)*(cosk*sqrt(1-cosk*cosk)*cos(phik)*sin(Btheta) + (cosk*cosk - 1)*cos(Btheta))/(1-cosk))/e_mag,2);
+  }
+
+double Z_paraperp(double cosk, double phik, double Btheta) {
+  /* collision factor Z for Compton emission perpendicular to B-field with target photons polarised perp to B _field  */
+  return pow((sqrt(1-cosk*cosk)*sin(phik)*cos(Btheta)-(1-cosk*cosk)*sin(phik)*cos(phik)*sin(Btheta)/(1-cosk))/sqrt(pow(sqrt(1-cosk*cosk)*sin(phik),2) + pow(cos(phik)*cos(Btheta)*sqrt(1-cosk*cosk) - cosk*sin(Btheta),2)),2);
+  }
+
+double Z_parapara(double cosk, double phik, double Btheta) {//still to do
+  /* collision factor Z for Compton emission perpendicular to B-field with target photons polarised perp to B _field  */
+  double e_mag = sqrt(pow((1-cosk*cosk)*pow(cos(phik),2)*sin(Btheta) + sqrt(1-cosk*cosk)*cos(phik)*cos(Btheta)*cosk-sin(Btheta),2) +
+                pow((1-cosk*cosk)*cos(phik)*sin(phik)*sin(Btheta) + sqrt(1-cosk*cosk)*sin(phik)*cos(Btheta)*cosk,2) +
+                pow(cosk*sqrt(1-cosk*cosk)*cos(phik)*sin(Btheta) + (cosk*cosk - 1)*cos(Btheta),2) );
+  return pow(((1-cosk*cosk)*pow(cos(phik),2)*sin(Btheta) + sqrt(1-cosk*cosk)*cos(phik)*cos(Btheta)*cosk-sin(Btheta) + sqrt(1-cosk*cosk)*cos(phik)*(cosk*sqrt(1-cosk*cosk)*cos(phik)*sin(Btheta) + (cosk*cosk - 1)*cos(Btheta))/(1-cosk))/e_mag,2);
+}
+
+//just have one function for Z which takes inputs to choose polarisation vectors of incoming and outgoing:
+double Z_e(double *_e, double *e, double *k, int perp) {
+
+  double e_length = sqrt(e[0]*e[0]+e[1]*e[1]+ e[2]*e[2]);
+  e[0]=e[0]/e_length, e[1]=e[1]/e_length, e[2]=e[2]/e_length;
+  double k_length = sqrt(k[0]*k[0]+k[1]*k[1]+ k[2]*k[2]);
+  k[0]=k[0]/k_length, k[1]=k[1]/k_length, k[2]=k[2]/k_length;
+
+  if (perp==1) {
+    _e[0] = e[0] + e[2]*k[0]/(1-k[2]), _e[1] = e[1] + e[2]*k[1]/(1-k[2]);
+    //_e[0] = 0, _e[1] = 1; //original fixed setting
+  } else {
+    _e[0] = -e[1] - e[2]*k[1]/(1-k[2]), _e[1] = e[0] + e[2]*k[0]/(1-k[2]);
+    //_e[0] = -1, _e[1] = 0; //original fixed setting
+  }
+  double _e_length = sqrt(_e[0]*_e[0]+_e[1]*_e[1]);
+  _e[0]=_e[0]/_e_length, _e[1]=_e[1]/_e_length;
+
+  return pow(e[0]*_e[0] + e[1]*_e[1] + (k[0]*_e[0] + k[1]*_e[1])*(e[2])/(1-k[2]),2);
+}
+
+double Sigma_1(double E_elecs,double F_min, double dN_dE, double dEe ) {
+  /* Sigma1 energy integral */
+  return (dN_dE*dEe*1.6E-19*F_min*(pow(F_min/(E_elecs*1.6E-19),2) - pow(E_elecs*1.6E-19/F_min,2) + 2)/pow(E_elecs*1.6E-19,4));
+  }
+
+double Sigma_2(double E_elecs,double F_min, double dN_dE, double dEe ) {
+  /* Sigma1 energy integral */
+  return (dN_dE*dEe*1.6E-19*pow(pow(E_elecs*1.6E-19,2) - F_min*F_min,2)/(pow(E_elecs*1.6E-19,6)*F_min));
   }
