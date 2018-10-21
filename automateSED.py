@@ -2,33 +2,43 @@
 
 import subprocess
 import sys
+import Zone_Viz
 
 subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h'])
 for i in range(1):
-    EVPA_rotation = 1
-    theta_obs=3.3
+    EVPA_rotation = 0
+    theta_obs = 2.7
     DD = 1
-    #if i>=150:
-        #theta_obs = 1.5
-    #if (i>=40) and (i<110):
-        #EVPA_rotation = 1
-    #elif (i>=190) and (i<260):
-       # EVPA_rotation = 1
-    #if i>=300:
-        #DD = 0
-    #if i>=340:
-        #theta_obs = 4.0
-    #if i<10:
-        ##ting = (i+3)*500-1
-    #else:
-        #ting = i*(i-4)+4
+    if (i>=40) and (i<80):
+        EVPA_rotation = 1
+    # if i<10:
+    #     n_blocks = 1
+    #     n_rings = 0
+    # elif i<20:
+    #     n_blocks = 7
+    #     n_rings = 1
+    # elif i<30:
+    #     n_blocks = 19
+    #     n_rings = 2
+    # elif i<40:
+    #     n_blocks = 37
+    #     n_rings = 3
+    # elif i<50:
+    #     n_blocks = 61
+    #     n_rings = 4
+    # elif i<60:
+    #     n_blocks = 91
+    #     n_rings = 5
+    # else:
+    #     n_blocks = 127
+    #     n_rings = 6
+    n_blocks = 127
+    n_rings = 6
 
-    #else:
-        #EVPA_rotation = 0
-    subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD),str(theta_obs)])
-    subprocess.call(['python','process_syncALP.py'])
+    subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD),str(theta_obs),str(n_blocks),str(n_rings)])
+    #subprocess.call(['python','process_syncALP.py'])
     print(i)
-
+    #Zone_Viz.PlotAndSave(count=i)
 
 import numpy as np
 import math as math
@@ -37,9 +47,9 @@ keydat = np.loadtxt('keyparams.txt')
 #theta_obs=keydat[2]
 #gamma_bulk = keydat[1]
 DD=1
-EVPA_rotation = 1
+EVPA_rotation = 0
 plot = 0
-id = 4197  #2161-2192 => 127blocks,NoRot; 2192-2224 => 127blocks,Rot;2225-2256 => 61blocks,NoRot;2257-2288 => 61blocks,Rot;
+id = 1  #2161-2192 => 127blocks,NoRot; 2192-2224 => 127blocks,Rot;2225-2256 => 61blocks,NoRot;2257-2288 => 61blocks,Rot;
 #2289-
 #2322 norot 127
 #2352 rot 127
@@ -87,18 +97,26 @@ if data_rotate == 1:
                 Pol[(id-1+i),j] += rot_angle
     np.savetxt('EVPA+PolTEST.txt', Pol,'%.4lf','\t')
 
-Rotation_unwrapper = 0
-if Rotation_unwrapper ==1:
-    Pol = np.loadtxt('EVPA+Pol.txt')
+Rotation_unwrapper = 1
+if Rotation_unwrapper == 1:
+    #Pol = np.loadtxt('EVPA+Pol.txt')
+    Pol = np.loadtxt('TESTFIL.txt')
     #Pol[(id-1+19):,3] += np.pi
-    Pol[(id-1+29):,3] += np.pi
-    Pol[(id-1+45):,3] += np.pi
-    Pol[(id-1+61):,3] += np.pi
-    Pol[(id-1+77):,3] += np.pi
-    Pol[(id-1+7):,2] += np.pi
-    Pol[(id-1+23):,2] += np.pi
-    Pol[(id-1+7):,1] += np.pi
-    Pol[(id-1+23):,1] += np.pi
+    Pol[(id-1+38):,3] += np.pi
+    Pol[(id-1+76):,3] += np.pi
+    Pol[(id-1+100):,3] += np.pi
+    Pol[(id-1+137):,3] += np.pi
+    Pol[(id-1+164):,3] += np.pi
+    Pol[(id-1+38):,4] += np.pi
+    Pol[(id-1+76):,4] += np.pi
+    Pol[(id-1+100):,4] += np.pi
+    Pol[(id-1+137):,4] += np.pi
+    Pol[(id-1+164):,4] += np.pi
+    Pol[(id-1+38):,5] += np.pi
+    Pol[(id-1+76):,5] += np.pi
+    Pol[(id-1+100):,5] += np.pi
+    Pol[(id-1+137):,5] += np.pi
+    Pol[(id-1+164):,5] += np.pi
     #Pol[(id-1+57):,j] += np.pi
     #Pol[(id-1+61):,j] += np.pi
     #Pol[(id-1+39):,3] += np.pi
@@ -109,20 +127,21 @@ if Rotation_unwrapper ==1:
     #Pol[(id-1+61):,2] += np.pi
     np.savetxt('EVPA+PolTEST.txt', Pol,'%.4lf','\t')
 
-nplot = 32
+nplot = 200
 if plot == 1:
     # used to plot the polarisation and EVPA
-    Pol = np.loadtxt('EVPA+Pol.txt')
+    Pol = np.loadtxt('EVPA+PolTEST.txt')
     t = [i for i in range(len(Pol))]
     #fig = plt.figure(15)
     #plt.plot(t[id-1:(id-1+nplot)],Pol[(id-1):(id-1+nplot),5],'g--')
     #plt.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),1],'g-')
     #plt.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),6],'r--')
     #plt.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),2],'r-')
-    f, (ax1,ax2) = plt.subplots(2,sharex=True,sharey=True)
-    ax1.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),2]*180/np.pi,'r-',label='Radio EVPA') #10
-    ax1.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),1]*180/np.pi,'g-', label='Optical EVPA') #11
-    ax1.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),3]*180/np.pi,'b-',label='X-ray EVPA') #11
+    #f, (ax1,ax2) = plt.subplots(2,sharex=True,sharey=True)
+    f, (ax1) = plt.subplots(1)
+    ax1.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),3]*180/np.pi,'r-',label='Radio EVPA') #10
+    ax1.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),4]*180/np.pi,'g-', label='Optical EVPA') #11
+    ax1.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),5]*180/np.pi,'b-',label='X-ray EVPA') #11
     ax1.set_ylabel('EVPA [deg]')
     ax1.set_yticks([-90,90,-45,45,0])
 
@@ -130,22 +149,22 @@ if plot == 1:
     ax15 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
     ax15.set_ylabel('$\Pi$')  # we already handled the x-label with ax1
 
-    ax15.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),7],'--',color='b')
-    ax15.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),6],'r--')
-    ax15.plot(t[id-1:(id-1+nplot)],Pol[(id-1):(id-1+nplot),5],'g--')
+    #ax15.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),2],'--',color='b')
+    #ax15.plot(t[(id-1):(id-1+nplot)],Pol[(id-1):(id-1+nplot),0],'r--')
+    ax15.plot(t[id-1:(id-1+nplot)],Pol[(id-1):(id-1+nplot),1],'g--')
     ax15.set_yticks([1,0.75,0.5,0.25,0])
 
-    ax2.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),2]*180/np.pi,'r-',label='Radio EVPA') #10
-    ax2.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),1]*180/np.pi,'g-', label='Optical EVPA') #11
-    ax2.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),3]*180/np.pi,'b-',label='X-ray EVPA') #11
-    ax2.tick_params(axis='y')
-    ax2.set_xlabel('Time [d]')
-    ax25 = ax2.twinx()  # instantiate a second axes that shares the same x-axis
-    #ax15.get_shared_y_axes().join(ax15, ax25)
-    ax25.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),7],'--',color='b')
-    ax25.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),6],'r--')
-    ax25.plot(t[id-1:(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),5],'g--')
-    ax25.set_yticks([1,0.75,0.5,0.25,0])
+    # ax2.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),3]*180/np.pi,'r-',label='Radio EVPA') #10
+    # ax2.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),4]*180/np.pi,'g-', label='Optical EVPA') #11
+    # ax2.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),5]*180/np.pi,'b-',label='X-ray EVPA') #11
+    # ax2.tick_params(axis='y')
+    # ax2.set_xlabel('Time [d]')
+    # ax25 = ax2.twinx()  # instantiate a second axes that shares the same x-axis
+    # #ax15.get_shared_y_axes().join(ax15, ax25)
+    # ax25.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),2],'--',color='b')
+    # ax25.plot(t[(id-1):(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),0],'r--')
+    # ax25.plot(t[id-1:(id-1+nplot)],Pol[(id-1+nplot):(id-1+2*nplot),5],'g--')
+    # ax25.set_yticks([1,0.75,0.5,0.25,0])
 
     # Fine-tune figure; make subplots close to each other and hide x ticks for
     # all but bottom plot.

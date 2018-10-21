@@ -2,7 +2,7 @@
 #define jet_fns_h
 
 void arange(double array[], int nvals);
-void log10space(float array[], float start, float end);
+void log10spaceWithMidpoints(double *bounds, double *midpoints, double start, double end, int no);
 void elecEnergies(double array[], double minEn,double maxEn, int length);
 void logspace(double array[], double val_min, double val_max, int n_values);
 void gammarange(double array[],double val_min,int n_values);
@@ -13,6 +13,8 @@ void cleanpop(double array[], int size_of_array, double cutoff);
 
 int findfirstzero(double array[], int size_of_array);
 int findminelement(double array[], int size_of_array);
+int findminelementNO0(double array[], int size_of_array);
+int findClosest(double *array, double value, int size_array);
 
 double sumno(double value);
 double sum_array(double array[], int size_of_array);

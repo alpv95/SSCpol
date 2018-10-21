@@ -18,28 +18,23 @@ void arange(double array[], int nvals)
 }
 
 
-/* Fn to return a logarithmically spaced array */
-void log10space(float array[], float start, float end)
+/* Fn to return a logarithmically spaced array of bounds and midpoint
+* bounds size is one greater than midpoints!
+* start < end
+*/
+void log10spaceWithMidpoints(double *bounds, double *midpoints, double start, double end, int no)
 {
-  float endstart;
-  int no;
-  endstart = end/start;
-  //  printf("logendstart: %.2f \n", log10(endstart));
-  no = log10(endstart);
-  //printf("The no of pts is: %d \n", no);
-
-  float element;//array[no],  element;
   int j;
-  element = start;
+
+  bounds[0] = start;
   //printf("no %.2d", no);
-  for (j=0; j<=no; j+=1)//element<=end; j++)
+  for (j=1; j<no; j++)//element<=end; j++)
     {
-      array[j]=element;
-      element *= 10;
-      //  printf("\n loop no is: %d\t%.f", j,element);
- 
+      bounds[j] = pow(10,log10(start) + j*(log10(end)-log10(start))/(no-1));
+      midpoints[j-1] = pow(10, log10(bounds[j-1]) + (log10(bounds[j])-log10(bounds[j-1]))/2);
+
    }
-  //  return 0;//(array);
+
 }
 
 
@@ -193,6 +188,23 @@ int findminelement(double array[], int size_of_array)
 
   for (i=0; i<size_of_array; i++)
     {
+      if (array[i]<min) ///&& array[i]!=0.0) //needs to be non zero or code won't work!
+	{
+	  //printf("%.2e\t%s\t%.2e\t%d \n", array[i], "<", min, element);
+	  min = array[i];
+	  element = i;
+	}
+    }
+  return element;
+}
+
+int findminelementNO0(double array[], int size_of_array)
+{
+  int i, element=size_of_array-1; //need -1 as array size x labelled 0->x-1
+  double min = 1E300; //initialise BIG
+
+  for (i=0; i<size_of_array; i++)
+    {
       if (array[i]<min && array[i]!=0.0) //needs to be non zero or code won't work!
 	{
 	  //printf("%.2e\t%s\t%.2e\t%d \n", array[i], "<", min, element);
@@ -201,6 +213,15 @@ int findminelement(double array[], int size_of_array)
 	}
     }
   return element;
+}
+
+int findClosest(double *array, double value, int size_array){ //finds element of member of array which is closest to value
+  int i;
+  double func_array[size_array];
+  for (i=0; i<size_array; i++){
+    func_array[i] = fabs(array[i] - value);
+  }
+  return findminelement(func_array, size_array);
 }
 
 
@@ -979,9 +1000,13 @@ void DD_3Beffective(double a, double b, double c, double v1, double v2, double v
   B2 = U*V*(1-cos(th))*a + V*V*b + U*U*cos(th)*b - U*sin(th)*c;
   B3 = -V*sin(th)*a + U*sin(th)*b + (U*U+V*V)*cos(th)*c;
 
-  B_effective[0] = B1;
-  B_effective[1] = B2;
-  B_effective[2] = B3;
+  Blength = sqrt(B1*B1+B2*B2+B3*B3);
+
+  B_effective[0] = B1/Blength;
+  B_effective[1] = B2/Blength;
+  B_effective[2] = B3/Blength;
+
+  Blength = sqrt(a*a+b*b+c*c);
 
   //Proj_theta_Beff = atan2(B2,B1);
 
