@@ -7,7 +7,7 @@ import Zone_Viz
 subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h'])
 for i in range(1):
     EVPA_rotation = 0
-    theta_obs = 2.7
+    theta_obs = 5.2
     DD = 1
     if (i>=40) and (i<80):
         EVPA_rotation = 1
@@ -43,7 +43,7 @@ for i in range(1):
 import numpy as np
 import math as math
 import matplotlib.pyplot as plt
-keydat = np.loadtxt('keyparams.txt')
+#keydat = np.loadtxt('keyparams.txt')
 #theta_obs=keydat[2]
 #gamma_bulk = keydat[1]
 DD=1

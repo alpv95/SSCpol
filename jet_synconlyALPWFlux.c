@@ -38,18 +38,18 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 {
 
     //enter the jet parameters
-    double W_j = 4E37;  //3e37//W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
+    double W_j = 3E37;  //3e37//W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
      double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
-     double B = 1E-4, B0 = 1E-4; //4e-5 //8e-5//0.000268; //B-field at jet base
+     double B = 4E-5, B0 = 4E-5; //4e-3 4e-5 //8e-5//0.000268; //B-field at jet base
      double R0 = 0.0, R = 0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well 
     double R_prev = 0.0, B_prev = 0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double E_min = 5.11E6; // Minimum electron energy 
-    double E_max = 8.1E9;//8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
+    double E_max = 8.1E9;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
     double alpha = 1.95;//1.95;//1.9//1.95//2.000001; // PL index of electrons
-     double theta_open_p = 45.0;//50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
+     double theta_open_p = 45.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
     double theta_obs; //4//3.0;//*(M_PI/180.0); // observers angle to jet axis in rad 
     sscanf(argv[4], "%lf", &theta_obs);
-    double gamma_bulk = 7.7;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
+    double gamma_bulk = 7.5;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
     int n_blocks;//127; //for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     sscanf(argv[5], "%d", &n_blocks);
     int n_rings; //6; //up to 6 rings possible atm, must choose number of rings corresponding to number of zones
@@ -90,7 +90,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     elecpopfull = fopen("elecpopfull.txt", "w"); //store electron populations at all points down the jet
     photonpop = fopen("photonpop.txt", "w"); //store sync photon populations at various points down the jet
     jfile = fopen("jfile_re.txt", "w");
-    keyparams = fopen("keyparams.txt", "w"); //store Lj, gamma_bulk and theta_obs
+    keyparams = fopen("keyparams.txt", "w"); //store Lj, gamma_bulk, theta_obs and theta_open
     ICfile = fopen("ICfile.txt", "w"); //ALP
     Pperpfile = fopen("Pperpfile.txt", "w"); //polarisations
     Pparafile = fopen("Pparafile.txt", "w");
@@ -549,7 +549,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         } else {
             for (i=0; i<(n_blocks); i++) {
                 for (l=0; l<n_blocks; l++){
-                    DD_3Beffective(BX[i],BY[i],BZ[i], ///////////////
+                    DD_3Beffective(BX[i],BY[i],BZ[i],
                                 cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
                                 gamma_bulk,B_effectives[l][i]);
@@ -558,7 +558,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             }
         }
 
-//        for (i=0; i<(n_blocks); i++) {
+//        for (i=0; i<(n_blocks); i++) { //save B-fields for visualization
 //            fprintf(Proj_Bfile,"\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",theta_r[i],theta_phi[i],
 //                    theta_tot[i],atan2(B_1[i],B_0[i]),atan2(By[i],Bx[i]),atan2(By_helical[i],Bx_helical[i]),
 //                    atan2(BY[i],BX[i]),atan2(B_effectives[i][i][1],B_effectives[i][i][0]));
@@ -608,27 +608,25 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         }
 
-
         for (l=0; l<array_size; l++){
             //P_para[l] = 0.2*P_perp[l];
             //make alpha dependent on frequency here
             if (l == 0){
-               effective_alpha[l] = alpha;
+               effective_alpha[l] = -(log10(dN_dE[l+1]) - log10(dN_dE[l]))/(log10(E_elecs[l+1]*Qe) - log10(E_elecs[l]*Qe));
             } else if (l > array_size - 2) {
                 effective_alpha[l] = -(log10(dN_dE[l]) - log10(dN_dE[l-1]))/(log10(E_elecs[l]*Qe) - log10(E_elecs[l-1]*Qe));
             } else {
                 effective_alpha[l] = -(log10(dN_dE[l+1]) - log10(dN_dE[l-1]))/(log10(E_elecs[l+1]*Qe) - log10(E_elecs[l-1]*Qe));
             }
             if (isnan(effective_alpha[l]) || isinf(effective_alpha[l])) {
-                effective_alpha[l] = effective_alpha[l-1];
+                effective_alpha[l] = 8.41283e+01;
             }
-
+            //printf("alphaef \t%.5e\n",effective_alpha[l]);
             for (g=0; g<n_blocks; g++) { //Sync Stokes Parameters
-                q_theta = pow(sin(acos(B_effectives[g][g][2])),(effective_alpha[l]+1)/2); //factor to account for weaker emission when B_field pointed closer to line of sight
+                q_theta = pow(sin(acos(B_effectives[g][g][2])),(alpha+1)/2); //factor to account for weaker emission when B_field pointed closer to line of sight
                 S_Stokes[g][l][0] += q_theta*P_perp[l]/n_blocks, S_Stokes[g][l][1] += (q_theta*P_perp[l]/n_blocks)*cos(2*atan2(B_effectives[g][g][0],-B_effectives[g][g][1])), S_Stokes[g][l][2] += (q_theta*P_perp[l]/n_blocks)*sin(2*atan2(B_effectives[g][g][0],-B_effectives[g][g][1]));
                 S_Stokes[g][l][0] += q_theta*P_para[l]/n_blocks, S_Stokes[g][l][1] += (q_theta*P_para[l]/n_blocks)*cos(2*atan2(B_effectives[g][g][1],B_effectives[g][g][0])), S_Stokes[g][l][2] += (q_theta*P_para[l]/n_blocks)*sin(2*atan2(B_effectives[g][g][1],B_effectives[g][g][0]));
                 //printf("SSStokes123 %.5e\t%.5e\t%.5e\n", S_Stokes[g][l][0],S_Stokes[g][l][1],S_Stokes[g][l][2]);
-                //printf("alphaef \t%.5e\n",effective_alpha[l]);
             }
 
             Ps_per_m[l] = P_perp[l] + P_para[l];
@@ -913,8 +911,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             binshiftIC = (int)round(log10(zone_doppler/doppler_factor)/logdif); //the number of bins one moves across (relative to shift of bins which already takes place)
             logdif = log10(f_pol[1])-log10(f_pol[0]);
             binshiftS = (int)round(log10(zone_doppler/doppler_factor)/logdif);
-            //printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
-            //printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
+            printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
+            printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
             //binshiftS = 0;
             //binshiftIC = 0;
             //think about how binsizes change
@@ -1097,7 +1095,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         //save data needed at every jet section to solve line of sight opacity
         fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R);
 
-        break;
+        //break;
 
     }
 
@@ -1137,6 +1135,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     }
 
+    return 0;
 }
 
 
