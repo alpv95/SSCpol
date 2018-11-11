@@ -61,25 +61,3 @@ def PlotAndSave(count):
 
 
 
-# colors = np.array([0.7,0.1]) #orange is after doppler dep, black is no doppler dep (B field stationary)
-# vcolors = np.array([0.5,0.5])
-#
-#
-#
-#
-# colormap = cm.inferno
-# fig = plt.figure(1)
-# ax = fig.add_subplot(111)
-# for i, item in enumerate(U):
-#     if not i:
-#         ax.quiver(X[i][0], Y[i][0],U[i][0],V[i][0],color=colormap(colors[0]),label='EVPA')
-#         ax.quiver(X[i][1], Y[i][1],U[i][1],V[i][1],color=colormap(colors[1]),label='EVPA_orig')
-#     else:
-#         ax.quiver(X[i], Y[i],U[i],V[i],color=colormap(colors))
-# colormap = cm.Greens
-# ax.quiver(Xv, Yv,Uv,Vv,color=colormap(vcolors),label='Jet Projection')
-# ax.set_xlabel('$\phi$ [deg]')
-# ax.set_ylabel('y')
-# ax.set_xlim([-70, 360])
-# ax.set_ylim([-20, 20])
-# plt.text(0, 35, '$\Gamma =$ {}'.format(Gamma), fontsize=12)
