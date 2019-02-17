@@ -1,6 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
+#matplotlib.use("TkAgg")
+from matplotlib import pyplot as plt
 from matplotlib import gridspec
+from scipy.signal import savgol_filter
 import math as math
 from jet_fns import *
 import matplotlib.cm as cm
@@ -19,8 +22,13 @@ def Theta_lab(theta_op_jet, gamma): #theta_opening in lab frame
 def Theta_jet(theta_op_lab, gamma): #theta_opening in jet frame
     return np.rad2deg(np.arctan(np.tan(np.deg2rad(theta_op_lab))*gamma))
 
-def plot_SED(): #plots SED with polarisation fraction and EVPA as a function of energy
+def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA as a function of energy
     #can plot
+    #filename can be single string or list of strings to plot simultaneously
+    legends = 0
+    if isinstance(filename, str):
+        filename = [filename]
+        legends = 1
 
     keydat = np.loadtxt('keyparams.txt')
     #opdat = np.loadtxt('EBLOpacity.txt') #high energy gamma opacities for different z due to EBL
@@ -51,6 +59,7 @@ def plot_SED(): #plots SED with polarisation fraction and EVPA as a function of 
     B0 = keydat[5]
     E_max = keydat[6]
     n_blocks = keydat[7]
+    array_size = int(keydat[8]) #50, can change this here by hand
 
     beta_bulk=(1.0-(gamma_bulk**(-2.0)))**(0.5)
     doppler_factor = 1.0/(gamma_bulk*(1.0-beta_bulk*np.cos(np.deg2rad(theta_obs))))
@@ -65,91 +74,140 @@ def plot_SED(): #plots SED with polarisation fraction and EVPA as a function of 
     fq_maxs_IC = frdata[:,5]
     fq_mids_IC = frdata[:,6]
 
-    fullpi = np.loadtxt("TESTFIL2.txt")
-    array_size = 50
-
-    pi = np.zeros((array_size,3))
-    stdpi = np.zeros((array_size,3))
-    n_examples = 1
-    for i in range(n_examples):
-        pi[:,0] += fullpi[(i*array_size):(i*array_size)+array_size,0]
-        pi[:,1] += fullpi[(i*array_size):(i*array_size)+array_size,1]
-        pi[:,2] += fullpi[(i*array_size):(i*array_size)+array_size,2]
-    pi = pi / n_examples
-    for i in range(n_examples):
-        stdpi[:,0] += (fullpi[(i*array_size):(i*array_size)+array_size,0] - pi[:,0])**2
-        stdpi[:,1] += (fullpi[(i*array_size):(i*array_size)+array_size,1] - pi[:,1])**2
-        stdpi[:,2] += ((fullpi[(i*array_size):(i*array_size)+array_size,2] - pi[:,2])*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)))**2
-    stdpi = np.sqrt(stdpi / (n_examples))
-
-
-    Pol = pi[:,0]
-    EVPA = pi[:,1]
-    P_detected = pi[:,2]*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)) #convert flux to ergs per cm and incluse blazar distance
-
-
     fig = plt.figure(2)
     # set height ratios for sublots
-    gs = gridspec.GridSpec(3, 1, height_ratios=[1,1,2])
+    gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 2])
     # the fisrt subplot
     ax0 = plt.subplot(gs[0])
     # log scale for axis X of the first subplot
-    ax0.set_title('$W_j= %.2G W$, $B_0= %.2G T$, $E_{max}= %.2G eV$,\n' %(W_j, B0, E_max)
+    ax0.set_title('$W_j= %.2G W$, $B_0= %.2G T$, $E_{max}= %.2G eV$,\n' % (W_j, B0, E_max)
                   + r'$\alpha= %.2f $, $\theta_{opening} = %.1f ^{\circ}$, $\theta_{obs}= %.1f ^{\circ}$,'
-                    r'$\gamma_{bulk}= %.1f $, $n_{blocks}= %d $' %(alpha, 180/np.pi*np.arctan(np.tan(np.pi*theta_open_p/180)/gamma_bulk), theta_obs, gamma_bulk, n_blocks))
+                    r'$\gamma_{bulk}= %.1f $, $n_{blocks}= %d $' % (
+                  alpha, 180 / np.pi * np.arctan(np.tan(np.pi * theta_open_p / 180) / gamma_bulk), theta_obs,
+                  gamma_bulk, n_blocks))
     ax0.set_xscale("log")
     ax0.set_xlim([1E-6, 1E13])
     ax0.set_ylim([0, 1.0])
     ax0.set_ylabel(r'$\Pi(\omega)$', size='13')
-    line0 = ax0.plot(freqtoeV(fq_mids), Pol,'m',label='Pol Fraction')
-    line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'m-.',label='Pol Fraction std')
-    #line01 = ax0.plot(freqtoeV(fq_mids_IC), PolIC,'r',label='Pol Fraction IC')
-    #line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
-    #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
-    #ax0.text(1E7,0.3,'$\Pi_{optical} =$ %.4f' % Pol_tot_opt, fontsize=10)
-    #ax0.text(1E7,0.1,'$\Pi_{radio} =$ %.4f' % Pol_tot_rad, fontsize=10)
-    #ax0.text(1E7,0.45,'$\Pi_{x-ray} =$ %.4f' % Pol_tot_gam, fontsize=10)
-    #ax0.text(100,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
-
-    ax0.legend()
-    #subplot for the EVPA
-    ax05 = plt.subplot(gs[1], sharex = ax0)
-    line05 = ax05.plot(freqtoeV(fq_mids), EVPA*180/np.pi, color='g',label='EVPA')
-    line005 = ax05.plot(freqtoeV(fq_mids), stdpi[:,1]*180/np.pi, color='g',linestyle='-.',label='EVPA std')
-    #line051 = ax05.plot(freqtoeV(fq_mids_IC), np.array(EVPAIC)*180/np.pi, color='r',label='EVPAIC')
-    #ax05.set_yscale("log")
+    ax05 = plt.subplot(gs[1], sharex=ax0)
     ax05.set_xlim([1E-6, 1E13])
-    #ax05.set_ylim([-1.58, 1.58])
     ax05.set_ylim([-90, 90])
     yticks = ax05.yaxis.get_major_ticks()
-    #ax05.text(1E7,-0.65*180/np.pi,'$EVPA_{optical} =$ %.4f' % (EVPA_tot_opt*180/np.pi), fontsize=10)
-    #ax05.text(1E7,-1.2*180/np.pi,'$EVPA_{radio} =$ %.4f' % (EVPA_tot_rad*180/np.pi), fontsize=10)
-    #ax05.text(1E7,-0.1*180/np.pi,'$EVPA_{x-ray} =$ %.4f' % (EVPA_tot_gam*180/np.pi), fontsize=10)
     ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='13')
-    ax05.legend()
-    #the second subplot
-    # shared axis X
-    ax1 = plt.subplot(gs[2], sharex = ax0)
-    #line3 = ax1.plot(freqtoeV(fq_mids_IC), P_detected_rawIC, 'r-.', label='ICRAW')#Inverse Compton
-    line4 = ax1.plot(freqtoeV(fq_mids), P_detected, 'b-', label='synchrotron') #synchrotron
-    line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
-    #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
-    #line6 = ax1.plot(ph_energy_MK501, flux_MK501, 'k.', label='data 2008-2009')
-    line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')
-    #line6 = ax1.plot(ph_energy_MK421, flux_MK421, 'g.', label='data 2008-2009')
-    #line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
+    ax1 = plt.subplot(gs[2], sharex=ax0)
     ax1.set_yscale('log')
     ax1.set_ylim([1E-14, 9.99E-10])
     ax1.set_xlim([1E-6, 1E13])
     ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='13')
-    ax1.set_xlabel('eV', size='13')
-    ax1.legend()
+    ax1.set_xlabel(r'$\nu$ [eV]', size='13')
     plt.setp(ax0.get_xticklabels(), visible=False)
     # remove last tick label for the second subplot
     yticks = ax1.yaxis.get_major_ticks()
     yticks[-2].label1.set_visible(False)
 
     plt.subplots_adjust(hspace=.0)
+
+    for j,f in enumerate(filename):
+        fullpi = np.loadtxt(f)
+        # check0 = fullpi==0 #replacing 0s with nans for smart binning
+        # fullpi[check0] = np.nan
+        pi = np.zeros((array_size,3))
+        stdpi = np.zeros((array_size,3))
+        pi_IC = np.zeros((array_size, 3))
+        stdpi_IC = np.zeros((array_size, 3))
+        pi_ICS = np.zeros((array_size, 3))
+        stdpi_ICS = np.zeros((array_size, 3))
+        n_examples = 1
+
+        for i in range(n_examples): #calculates average pi/evpa/power over many jet realisations
+            i=j*2
+            pi[:,0] += fullpi[(i*array_size):(i*array_size)+array_size,0]
+            pi[:,1] += fullpi[(i*array_size):(i*array_size)+array_size,1]
+            pi[:,2] += fullpi[(i*array_size):(i*array_size)+array_size,2]
+
+            pi_IC[:, 0] += fullpi[(i * array_size):(i * array_size) + array_size, 3]
+            pi_IC[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 4]
+            pi_IC[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 5]
+
+            # pi_ICS[:, 0] += fullpi[(i * array_size):(i * array_size) + array_size, 6]
+            # pi_ICS[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 7]
+            # pi_ICS[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 8]
+
+        pi = pi / n_examples
+        pi_IC = pi_IC / n_examples
+        pi_ICS = pi_ICS / n_examples
+
+        for i in range(n_examples): #calculates std of pi/evpa/power over many jet realisations
+            i=j*2
+            stdpi[:,0] += (fullpi[(i*array_size):(i*array_size)+array_size,0] - pi[:,0])**2
+            stdpi[:,1] += (fullpi[(i*array_size):(i*array_size)+array_size,1] - pi[:,1])**2
+            stdpi[:,2] += ((fullpi[(i*array_size):(i*array_size)+array_size,2] - pi[:,2])*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)))**2
+
+            stdpi_IC[:, 0] += (fullpi[(i * array_size):(i * array_size) + array_size, 3] - pi_IC[:, 0]) ** 2
+            stdpi_IC[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 4] - pi_IC[:, 1]) ** 2
+            stdpi_IC[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 5] - pi_IC[:, 2]) * 1.0E7 * (1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0)))**2
+
+            # stdpi_ICS[:, 0] += (fullpi[(i * array_size):(i * array_size) + array_size, 6] - pi_ICS[:, 0]) ** 2
+            # stdpi_ICS[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 7] - pi_ICS[:, 1]) ** 2
+            # stdpi_ICS[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 8] - pi_ICS[:, 2]) * 1.0E7 * (
+            #             1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))) ** 2
+
+        stdpi = np.sqrt(stdpi / (n_examples))
+        stdpi_IC = np.sqrt(stdpi_IC / (n_examples))
+        stdpi_ICS = np.sqrt(stdpi_ICS / (n_examples))
+
+
+        Pol = pi[:,0]
+        EVPA = pi[:,1]
+        P_detected = pi[:,2]*1.0E7*(1.0/((4.0*np.pi*d_Blazar**2.0)*(1.0+z)**2.0)) #convert flux to ergs per cm and incluse blazar distance
+        Pol_IC = pi_IC[:, 0]
+        EVPA_IC = pi_IC[:, 1]
+        P_detected_IC = pi_IC[:, 2] * 1.0E7 * (1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))
+        Pol_ICS = pi_ICS[:, 0]
+        EVPA_ICS = pi_ICS[:, 1]
+        P_detected_ICS = pi_ICS[:, 2] * 1.0E7 * (1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))
+
+
+        line0 = ax0.plot(freqtoeV(fq_mids), Pol,'m',label='Pol Fraction')
+        line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'m-.',label='Pol Fraction std')
+        line0143 = ax0.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), Pol_IC[P_detected_IC!=0.0],'r',label='Pol Fraction IC')
+        line01 = ax0.plot(freqtoeV(fq_mids_IC), stdpi_IC[:,0], 'r-.',label='Pol IC std')
+        line02 = ax0.plot(freqtoeV(fq_mids), Pol_ICS, 'k', label='Pol Fraction ICS')
+        #line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
+        #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
+        #ax0.text(1E7,0.3,'$\Pi_{optical} =$ %.4f' % Pol_tot_opt, fontsize=10)
+        #ax0.text(1E7,0.1,'$\Pi_{radio} =$ %.4f' % Pol_tot_rad, fontsize=10)
+        #ax0.text(1E7,0.45,'$\Pi_{x-ray} =$ %.4f' % Pol_tot_gam, fontsize=10)
+        #ax0.text(100,0.2,'$\Pi^{Initial}_{tot} =$ %.5f' % Pol_Init_tot, fontsize=10)
+
+        #subplot for the EVPA
+
+        line05 = ax05.plot(freqtoeV(fq_mids), EVPA*180/np.pi, color='g',label='EVPA')
+        line005 = ax05.plot(freqtoeV(fq_mids), stdpi[:,1]*180/np.pi, color='g',linestyle='-.',label='EVPA std')
+        line0053 = ax05.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 1] * 180 / np.pi, color='r', linestyle='-.', label='EVPAIC std')
+        line051 = ax05.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), EVPA_IC[P_detected_IC!=0.0]*180/np.pi, color='r',label='EVPAIC')
+        line052 = ax05.plot(freqtoeV(fq_mids), EVPA_ICS * 180 / np.pi, color='k', label='EVPAICS')
+        #the second subplot
+        # shared axis X
+
+        #savgol filter to smooth bumpy ICS from rebinning larger IC bins in synchrotron ones.
+        #np.savetxt("singleSED.txt", np.array([freqtoeV(fq_mids),P_detected]))
+        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0], 'r-.', label='IC')#Inverse Compton
+        #line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
+        line4 = ax1.plot(freqtoeV(fq_mids), P_detected, '-', color=(j/len(filename),j/10,1), label='synchrotron') #synchrotron
+        line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
+        line004 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')
+        #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
+        #line6 = ax1.plot(ph_energy_MK501, flux_MK501, 'k.', label='data 2008-2009')
+        #line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')
+        #line6 = ax1.plot(ph_energy_MK421, flux_MK421, 'g.', label='data 2008-2009')
+        #line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
+
+        if (legends):
+            ax0.legend()
+            ax05.legend()
+            ax1.legend()
+
     #fig.savefig('/Users/ALP/Desktop/DD'+str(10)+'.png')
     plt.show()
 
@@ -299,5 +357,8 @@ def Save_movie(count): #joins IXPE pol_ang & pol_frac plots with movie
     plt.close(fig)
 
 if __name__ == "__main__":
-    Save_movie(1)
+    #Save_movie(1)
+    plot_SED(["TESTFIL2.txt","TESTFIL4.txt","TESTFIL3.txt","TESTFIL5.txt","TESTFIL1.txt"],IC=True)
+
+
 

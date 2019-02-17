@@ -10,7 +10,7 @@ for i in range(1):
     theta_obs = 1.6
     DD = 1
     if ((i>=40) and (i<104)) or ((i>=150) and (i<182)):
-        EVPA_rotation = 1
+        EVPA_rotation = 0
     # if i<10:
     #     n_blocks = 1
     #     n_rings = 0
@@ -32,13 +32,13 @@ for i in range(1):
     # else:
     #     n_blocks = 127
     #     n_rings = 6
-    n_blocks = 127
-    n_rings = 6
+    n_blocks = 1
+    n_rings = 0
 
     subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD),str(theta_obs),str(n_blocks),str(n_rings)])
-    #junk.plot_SED()
+    junk.plot_SED("TESTFIL1.txt")
     print(i)
-    junk.Save_movie(count=i)
+    #junk.Save_movie(count=i)
 
 import numpy as np
 import math as math
