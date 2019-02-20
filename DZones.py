@@ -98,7 +98,7 @@ def zoneDominator(nup,N_0,gamma,theta_obs, Dlist=None): #returns how many zones 
     # plt.figure()
     # D_prev = -1
     for i,D in enumerate(Dlist):
-        numax = 10**4.0
+        numax = 0.334*10**4.0
         #B = np.random.random(3) #is this really isotropic?
         #numax = (B[2]**2 / (B[1]**2 + B[2]**2 + B[0]**2)) * 10**4.0 #( Bpara / B )**2 controls gamma_max / numax -> marscher
         if numax < 10: #gamma_min
@@ -115,13 +115,14 @@ def zoneDominator(nup,N_0,gamma,theta_obs, Dlist=None): #returns how many zones 
     # print(nupeak)
     # print(Fnu_tot[nupeak])
     # plt.plot(nu,Fnu_tot,'-b')
-    #for i in range(len(Dlist)):
-        #plt.plot(nu,Fnu[i,:],'--')
+    # for i in range(len(Dlist)):
+    #     plt.plot(nu,Fnu[i,:],'--')
     # plt.xscale("log")
     # plt.yscale("log")
     # plt.xlabel(r"$\nu [eV]$")
     # plt.ylabel(r"Flux [arbitrary]")
-    # plt.legend()
+    # #plt.legend()
+    # plt.show()
 
     flux_counter = 0
     num_counter = 0
@@ -144,6 +145,7 @@ def N_zone_plot(N_0,gamma,theta_obs):
     plt.plot(nup, np.array(N)/N[30],'r')
     plt.xscale("log")
     plt.yscale("log")
+    plt.show()
 
 
 def N_zone_av(N_0,gamma,theta_obs):
