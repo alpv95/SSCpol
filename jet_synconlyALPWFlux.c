@@ -39,14 +39,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     //enter the jet parameters
     double W_j = 1.3E37;  //3e37//W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
-     double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
-     double B = 1E-4, B0 = 1E-4; //4e-3 4e-5 //8e-5//0.000268; //B-field at jet base
-     double R0 = 0.0, R = 0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well 
+    double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
+    double B = 1E-4, B0 = 1E-4; //4e-3 4e-5 //8e-5//0.000268; //B-field at jet base
+    double R0 = 0.0, R = 0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well 
     double R_prev = 0.0, B_prev = 0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double E_min = 5.11E6; // Minimum electron energy 
     double E_max = 1.7E10;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
     double alpha = 1.85;//1.95;//1.9//1.95//2.000001; // PL index of electrons
-     double theta_open_p = 9.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
+    double theta_open_p = 9.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
     double theta_obs; //4//3.0;//*(M_PI/180.0); // observers angle to jet axis in rad 
     sscanf(argv[4], "%lf", &theta_obs);
     double gamma_bulk = 3.01;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
@@ -76,29 +76,42 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
            FG[m][2] = d;
     }
 
+    char idxx[10];
+    sscanf(argv[2], "%s", idxx);
+    printf("%s",idxx);
+    strcat(idxx,".txt");			
+		
+    char frange[30] = "results/freqrange";
+    strcat(frange,idxx);
+    char bdata[30] = "results/basicdata";
+    strcat(bdata,idxx);
+    char kparams[30] = "results/keyparams";
+    strcat(kparams,idxx);
+    char testfil[30] = "results/TESTFIL";
+    strcat(testfil,idxx);
+		
     //define some files to store output data
-    FILE *Nfile, *freqrange, *freqfile, *opfile, *powfile, *basicdata, *elecpop, *elecpopfull, *photonpop, *jfile, *keyparams, *ICfile,
-        *Pperpfile, *Pparafile, *PperpfileIC, *PparafileIC, *Proj_Bfile, *block_thetafile, *TESTFIL2;
+    FILE *freqrange, *basicdata, *keyparams, *TESTFIL2;
 
-    Nfile = fopen("Ndata.txt", "w"); //store electron populations
-    freqrange = fopen("freqrange.txt", "w");//store frequency bin boundaries
-    freqfile = fopen("critfreqs.txt", "w");//store critical frequencies
-    opfile = fopen("kvalues.txt", "w");//store opacity values for each jet section
-    powfile = fopen("secpow.txt", "w");//store emitted synchrotron power (freq fn) for each jet section
-    basicdata = fopen("basicdata.txt", "w"); //store B, x, R etc
-    elecpop = fopen("elecpop.txt", "w"); //store electron populations at various points down the jet
-    elecpopfull = fopen("elecpopfull.txt", "w"); //store electron populations at all points down the jet
-    photonpop = fopen("photonpop.txt", "w"); //store sync photon populations at various points down the jet
-    jfile = fopen("jfile_re.txt", "w");
-    keyparams = fopen("keyparams.txt", "w"); //store Lj, gamma_bulk, theta_obs and theta_open
-    ICfile = fopen("ICfile.txt", "w"); //ALP
-    Pperpfile = fopen("Pperpfile.txt", "w"); //polarisations
-    Pparafile = fopen("Pparafile.txt", "w");
-    PperpfileIC = fopen("PperpfileIC.txt", "w"); //polarisations
-    PparafileIC = fopen("PparafileIC.txt", "w");
-    Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //projected B field onto plane of the sky for each section
-    block_thetafile = fopen("block_thetafile.txt","w"); //saves the angle to the line of sight of each block
-    TESTFIL2 = fopen("TESTFIL2.txt","a");
+    //Nfile = fopen("Ndata.txt", "w"); //store electron populations
+    freqrange = fopen(frange, "w");//store frequency bin boundaries
+    //freqfile = fopen("critfreqs.txt", "w");//store critical frequencies
+    //opfile = fopen("kvalues.txt", "w");//store opacity values for each jet section
+    //powfile = fopen("secpow.txt", "w");//store emitted synchrotron power (freq fn) for each jet section
+    basicdata = fopen(bdata, "w"); //store B, x, R etc
+    //elecpop = fopen("elecpop.txt", "w"); //store electron populations at various points down the jet
+    //elecpopfull = fopen("elecpopfull.txt", "w"); //store electron populations at all points down the jet
+    //photonpop = fopen("photonpop.txt", "w"); //store sync photon populations at various points down the jet
+    //jfile = fopen("jfile_re.txt", "w");
+    keyparams = fopen(kparams, "w"); //store Lj, gamma_bulk, theta_obs and theta_open
+    //ICfile = fopen("ICfile.txt", "w"); //ALP
+    //Pperpfile = fopen("Pperpfile.txt", "w"); //polarisations
+    //Pparafile = fopen("Pparafile.txt", "w");
+    //PperpfileIC = fopen("PperpfileIC.txt", "w"); //polarisations
+    //PparafileIC = fopen("PparafileIC.txt", "w");
+    //Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //proj/ected B field onto plane of the sky for each section
+    //block_thetafile = fopen("block_thetafile.txt","w"); //saves the angle to the line of sight of each block
+    TESTFIL2 = fopen(testfil,"w");
     fprintf(keyparams, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\t%d \n", W_j, gamma_bulk, theta_obs, theta_open_p, alpha, B, E_max, n_blocks, array_size);
 
     //define some useful parameters to gauge progress
@@ -394,9 +407,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
     }
 
-    for (i=0; i<n_blocks; i++){
-        fprintf(block_thetafile, "\t%.5e", theta_tot[i]); //saving the angle to the direction of view of each block to be used in python file for doppler boost
-    }
+    //for (i=0; i<n_blocks; i++){
+    //    fprintf(block_thetafile, "\t%.5e", theta_tot[i]); //saving the angle to the direction of view of each block to be used in python file for doppler boost
+    //}
     //alignment vector matrix for each block to every other block, for use in Synchrotron mixing between zones for IC emission:
     //assuming jet section is flat 2D (ok assumption given large section size) but have z component to rotate with theta_obs
     //remember to add +1 to vector lengths so that 1/r is never 1/0
@@ -650,7 +663,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             urad_array_para[l] = P_para[l] * dfreqs_pol[l] / (2.0*M_PI*C*R); //have these separate for compton polarisation calculation
             //u_rad += urad_array[l];
             //printf("Ne_e %.5e\n", Ne_e[l]);
-            fprintf(photonpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\n", f_pol[l], (urad_array_perp[l]+urad_array_para[l]) /(f_pol[l]*H),(urad_array_perp[l]+urad_array_para[l]), f_em_max_IC[l], f_em_min_IC[l], f_pol_IC[l]);
+            //fprintf(photonpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\n", f_pol[l], (urad_array_perp[l]+urad_array_para[l]) /(f_pol[l]*H),(urad_array_perp[l]+urad_array_para[l]), f_em_max_IC[l], f_em_min_IC[l], f_pol_IC[l]);
         }
         //printf("step\n\n");
 //        for (g=0; g<n_blocks; g++){
@@ -679,7 +692,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //        }
 
         for (g=0; g<n_blocks; g++){ //B-field blocks
-            for (h=0; h<n_blocks; h++){
+            for (h=g; h<g+1; h++){
                 Btheta = acos(B_effectives[h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
                 zeta = atan(B_effectives[h][g][1]/B_effectives[h][g][0]); //to rotate each Stokes to lab frame
                 //printf("Btheta [deg] \t%.5e", Btheta*180/M_PI);
@@ -996,30 +1009,30 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             P_para[i] *= dx;
             P_perpIC[i] *= dx;
             P_paraIC[i] *= dx;
-	        fprintf(jfile, "\t%.5e", j[i]);
-            fprintf(freqfile, "\t%.5e", f_c[i]); //these are Doppler boosted later
-            fprintf(opfile, "\t%.5e", k[i]);//*(R/R_prev)*(R/R_prev));
-            fprintf(powfile, "\t%.5e", Ps_per_m[i]*pow(doppler_factor, 4.0));//*pow((doppler(beta_e[i], deg2rad(theta_obs))), 4.0));//*Ne_e[i]);
-            fprintf(ICfile, "\t%.5e", Ps_per_m_IC[i]*pow(doppler_factor, 4.0)); //ALP
-            fprintf(Pperpfile, "\t%.5e", P_perp[i]);//*pow(doppler_factor, 4.0)); //polarisation power now doppler boosted in python file
-            fprintf(Pparafile, "\t%.5e",P_para[i]);//*pow(doppler_factor, 4.0));
-            fprintf(PperpfileIC, "\t%.5e", P_perpIC[i]);//*pow(doppler_factor, 4.0));
-            fprintf(PparafileIC, "\t%.5e",P_paraIC[i]);//*pow(doppler_factor, 4.0));
+	       // fprintf(jfile, "\t%.5e", j[i]);
+            //fprintf(freqfile, "\t%.5e", f_c[i]); //these are Doppler boosted later
+            //fprintf(opfile, "\t%.5e", k[i]);//*(R/R_prev)*(R/R_prev));
+            //fprintf(powfile, "\t%.5e", Ps_per_m[i]*pow(doppler_factor, 4.0));//*pow((doppler(beta_e[i], deg2rad(theta_obs))), 4.0));//*Ne_e[i]);
+            //fprintf(ICfile, "\t%.5e", Ps_per_m_IC[i]*pow(doppler_factor, 4.0)); //ALP
+            //fprintf(Pperpfile, "\t%.5e", P_perp[i]);//*pow(doppler_factor, 4.0)); //polarisation power now doppler boosted in python file
+            //fprintf(Pparafile, "\t%.5e",P_para[i]);//*pow(doppler_factor, 4.0));
+            //fprintf(PperpfileIC, "\t%.5e", P_perpIC[i]);//*pow(doppler_factor, 4.0));
+            //fprintf(PparafileIC, "\t%.5e",P_paraIC[i]);//*pow(doppler_factor, 4.0));
             //fprintf(TESTFIL, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",S_Pi[i],S_PA[i],S_P[i],IC_Pi[i],IC_PA[i],IC_P[i]);
             //fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B);
             //fprintf(betadata, "\t%.5e", beta_e[i]);
 
             if (i==array_size-1) //puts the outputs for the next jet section on a new line in files
             {
-                fprintf(freqfile, "\n");
-                fprintf(opfile, "\n");
-        		fprintf(jfile, "\n");
-                fprintf(powfile, "\n");
-                fprintf(ICfile, "\n");
-                fprintf(Pperpfile, "\n");
-                fprintf(Pparafile, "\n");
-                fprintf(PperpfileIC, "\n");
-                fprintf(PparafileIC, "\n");
+                //fprintf(freqfile, "\n");
+                //fprintf(opfile, "\n");
+        		//fprintf(jfile, "\n");
+               // fprintf(powfile, "\n");
+               // fprintf(ICfile, "\n");
+               // fprintf(Pperpfile, "\n");
+               // fprintf(Pparafile, "\n");
+               // fprintf(PperpfileIC, "\n");
+               // fprintf(PparafileIC, "\n");
 
                 //fprintf(Proj_Bfile, "\n");
             }
@@ -1108,7 +1121,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             Ps_per_mIC_elec[i] = 0.0;
             Ps_per_m_elec[i] = 0.0;
 
-            fprintf(elecpopfull, "%.6e\t%.6e\t%.6e\n", E_elecs[i], Ne_e[i], dN_dE[i]);
+            //fprintf(elecpopfull, "%.6e\t%.6e\t%.6e\n", E_elecs[i], Ne_e[i], dN_dE[i]);
 
         }
         memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* n_blocks * array_size * 3); //reset these to 0 for next section
@@ -1200,12 +1213,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     printf("The jet was divided into %d %s \n", nSteps, "section(s).");
 
     //store electron information
-    for (i=0; i<array_size; i++)
+   // for (i=0; i<array_size; i++)
 
-    {
-        fprintf(elecpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", E_elecs[i], Ne_orig[i], Ne_intermed[i], Ne_e[i], dN_dE_orig[i]); //file elecpop.txt
+   // {
+   //     fprintf(elecpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", E_elecs[i], Ne_orig[i], Ne_intermed[i], Ne_e[i], dN_dE_orig[i]); //file elecpop.txt
 
-    }
+   // }
 
     return 0;
 }
