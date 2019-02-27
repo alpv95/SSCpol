@@ -590,7 +590,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
 
 
-            //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval
+            //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval / l_c
 
             for (l=0; l<array_size; l++)
             {
@@ -599,7 +599,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     if ((f_pol[l]/f_c[i]) >= FG[m][0] && (f_pol[l]/f_c[i]) <= FG[m+1][0])
                     {
                         P_perp[l] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * FG[m+1][1] * dN_dE[i]*dEe[i]*Qe * /*dfreqs_pol[l] */ 4.4216E11 / (1E-7);  //power per unit frequency, this is Power(freq), multiply by freq later to get nuF(nu)
-                        P_para[l] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * FG[m+1][2] * dN_dE[i]*dEe[i]*Qe * /*dfreqs_pol[l] */ 4.4216E11 / (1E-7); //*dx/l_c !!! (this happens further down) and * other constants
+                        P_para[l] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * FG[m+1][2] * dN_dE[i]*dEe[i]*Qe * /*dfreqs_pol[l] */ 4.4216E11 / (1E-7); //*dx !!! (this happens further down) and * other constants, already has 1/l_c
                         //Ps_per_m_test[i] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * (FG[m+1][1]+FG[m+1][2]) * dN_dE[i]*dEe[i]*Qe * dfreqs_pol[l] * 4.4216E11 / (1E-7) ;
 
 
