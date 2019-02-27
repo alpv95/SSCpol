@@ -46,10 +46,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double E_min = 5.11E6; // Minimum electron energy 
     double E_max = 1.7E10;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
     double alpha = 1.85;//1.95;//1.9//1.95//2.000001; // PL index of electrons
-    double theta_open_p = 9.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
+    double theta_open_p = 30.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
     double theta_obs; //4//3.0;//*(M_PI/180.0); // observers angle to jet axis in rad 
     sscanf(argv[4], "%lf", &theta_obs);
-    double gamma_bulk = 3.01;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
+    double gamma_bulk = 14.0;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
     int n_blocks;//127; //for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     sscanf(argv[5], "%d", &n_blocks);
     int n_rings; //6; //up to 6 rings possible atm, must choose number of rings corresponding to number of zones
@@ -76,19 +76,22 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
            FG[m][2] = d;
     }
 
-    char idxx[10];
-    sscanf(argv[2], "%s", idxx);
-    printf("%s",idxx);
-    strcat(idxx,".txt");			
+    char thread_idst[10];
+    char task_idst[10];
+    sscanf(argv[2], "%s", thread_idst);
+    sscanf(argv[7], "%s", task_idst);
+    strcat(task_idst,"_");
+    strcat(task_idst,thread_idst);
+    strcat(task_idst,".txt");			
 		
     char frange[30] = "results/freqrange";
-    strcat(frange,idxx);
+    strcat(frange,task_idst);
     char bdata[30] = "results/basicdata";
-    strcat(bdata,idxx);
+    strcat(bdata,task_idst);
     char kparams[30] = "results/keyparams";
-    strcat(kparams,idxx);
+    strcat(kparams,task_idst);
     char testfil[30] = "results/TESTFIL";
-    strcat(testfil,idxx);
+    strcat(testfil,task_idst);
 		
     //define some files to store output data
     FILE *freqrange, *basicdata, *keyparams, *TESTFIL2;
@@ -117,7 +120,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //define some useful parameters to gauge progress
     int nSteps = 0; //how many sections the jet has broken down into
     double x = 0; //progress along the jet
-    double dx; //incremenet of step length
+    double dx = 0; //incremenet of step length
     double eps; //stores the eqn 2.18b
     double beta_bulk = lortovel(gamma_bulk);
     double doppler_factor = doppler(beta_bulk, deg2rad(theta_obs));
@@ -185,8 +188,20 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double Ps_per_mIC_elec[array_size]; //energy lost by each electron bin per m of IC emission
     memset(Ps_per_mIC_elec, 0.0, array_size*sizeof(Ps_per_mIC_elec[0]));
     double urad_array_perp[array_size]; //photon energy density
+    memset(urad_array_perp, 0.0, array_size*sizeof(urad_array_perp[0]));
     double urad_array_para[array_size];
+    memset(urad_array_para, 0.0, array_size*sizeof(urad_array_para[0]));
+    double P_perpcum[array_size]; //store cumulative synchrotron power for use as synchrotron seed power for compton at each step (all photons kept for now)
+    memset(P_perpcum, 0.0, array_size*sizeof(P_perpcum[0]));
+    double P_paracum[array_size];
+    memset(P_paracum, 0.0, array_size*sizeof(P_paracum[0]));
     double IC_losses[array_size]; //store electron IC energy losses
+
+    //******************************** Inititalise seed photon energy density variables *************************************//
+    double Pperp_array[40][array_size];
+    double Ppara_array[40][array_size]; //need to keep a queue of prior jet step values of these for energy density calculation
+    double dx_array[40]; //except need all rows to drop an index each time
+    double R_array[40];
 
     //****************Initialise Polarisation variables *****************************************************************************//
     //first set frequency bins for polarised powers to drop into:
@@ -321,7 +336,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
 
     //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
-    MTRand seedr = seedRand((unsigned)time(NULL));
+    int thread_id;
+    int task_id;
+    sscanf(argv[2], "%d", &thread_id);
+    sscanf(argv[7], "%d", &task_id);
+    MTRand seedr = seedRand((unsigned)time(NULL)+(unsigned)(task_id + thread_id)); //random seed supplemented by task and thread id
     //MTRand seedr = seedRand(5); //fix random seed
     double B_0[n_blocks];
     double B_1[n_blocks];
@@ -505,13 +524,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         for (i=0; i<(n_blocks); i++){
             Bx[i] = B_0[i]*(cos(theta_r[i])+cos(M_PI/2+theta_phi[i])*cos(M_PI/2+theta_phi[i])*(1-cos(theta_r[i])))
                     + B_1[i]*cos(M_PI/2+theta_phi[i])*sin(M_PI/2+theta_phi[i])*(1-cos(theta_r[i]))
-                    + B_2[i]*R0/R*sin(M_PI/2+theta_phi[i])*sin(theta_r[i]);
+                    + B_2[i]*R/R*sin(M_PI/2+theta_phi[i])*sin(theta_r[i]);
             By[i] = B_0[i]*sin(M_PI/2+theta_phi[i])*cos(M_PI/2+theta_phi[i])*(1-cos(theta_r[i]))
                     + B_1[i]*(cos(theta_r[i])+sin(M_PI/2+theta_phi[i])*sin(M_PI/2+theta_phi[i])*(1-cos(theta_r[i])))
-                    - B_2[i]*R0/R*cos(M_PI/2+theta_phi[i])*sin(theta_r[i]);
+                    - B_2[i]*R/R*cos(M_PI/2+theta_phi[i])*sin(theta_r[i]);
             Bz[i] = -B_0[i]*sin(M_PI/2+theta_phi[i])*sin(theta_r[i])
                     + B_1[i]*cos(M_PI/2+theta_phi[i])*sin(theta_r[i])
-                    + B_2[i]*R0/R*cos(theta_r[i]);
+                    + B_2[i]*R/R*cos(theta_r[i]);
             //helical B-field equivalent has to be inside loop below as it depends on R
 
         }
@@ -603,7 +622,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
 
 
-            //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval
+            //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval per m (/ l_c) 
 
             for (l=0; l<array_size; l++)
             {
@@ -612,7 +631,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     if ((f_pol[l]/f_c[i]) >= FG[m][0] && (f_pol[l]/f_c[i]) <= FG[m+1][0])
                     {
                         P_perp[l] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * FG[m+1][1] * dN_dE[i]*dEe[i]*Qe * /*dfreqs_pol[l] */ 4.4216E11 / (1E-7);  //power per unit frequency, this is Power(freq), multiply by freq later to get nuF(nu)
-                        P_para[l] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * FG[m+1][2] * dN_dE[i]*dEe[i]*Qe * /*dfreqs_pol[l] */ 4.4216E11 / (1E-7); //*dx/l_c !!! (this happens further down) and * other constants
+                        P_para[l] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * FG[m+1][2] * dN_dE[i]*dEe[i]*Qe * /*dfreqs_pol[l] */ 4.4216E11 / (1E-7); //*dx !!! (this happens further down) and * other constants, already have /l_c
                         //Ps_per_m_test[i] += (sqrt(3)*M_PI/(16*Me*pow(C,3)))*pow(Qe,3) * B * (FG[m+1][1]+FG[m+1][2]) * dN_dE[i]*dEe[i]*Qe * dfreqs_pol[l] * 4.4216E11 / (1E-7) ;
 
 
@@ -629,6 +648,25 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //printf("Ps_per_me_test %.5e\t%.5e\n", Ps_per_m_test[i],Ps_per_m_elec[i]);
 
         }
+
+
+
+        //some code to estimate what dx early for energy density calcultion, based off sync losses only, ok if IC losses not too big, early jet
+        dx_set = findminelementNO0(Ne_e, array_size);//gets the lowest non_zero element. Higher energy electrons radiate more rapidly
+
+        dx_R = 0.05*(R0+x*tan(deg2rad(theta_open_p)))/tan(deg2rad(theta_open_p)); //ensures Rnew <= 1.05 Rold
+        dx_P = (Ne_e[dx_set]*(E_elecs[dx_set]-E_elecs[dx_set-1])*Qe)/(Ps_per_m_elec[dx_set]); //based on radiative losses
+        //printf(" dx_P  %.5e\t%d \n", Ps_per_mIC_elec[dx_set],dx_set);   
+        //printf("dx_R, dx_P \t%.5e\t%.5e\t%.5e \n", dx_P, (Ne_e[dx_set]*(E_elecs[dx_set]-E_elecs[dx_set-1])*Qe)/(Ps_per_m[dx_set]));
+
+        if (dx_R < dx_P){
+           dx = dx_R;
+        } else {
+          dx = dx_P;
+        }
+
+
+
 
         for (l=0; l<array_size; l++){
             //P_para[l] = 0.2*P_perp[l];
@@ -655,15 +693,24 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //printf("Ps_per_me_test, Ps_per_m %.5e\t%.5e\n", Ps_per_m_test[l],Ps_per_m[l]);
             //printf("Ps_permSYNC %.5e\n", Ps_per_m[l]);
             //photon energy density
-            urad_array_perp[l] = 0.0; //initialise to avoid weird C bugs
-            urad_array_para[l] = 0.0;
             //urad_array_perp[l] = P_perp[l]/(2.0*M_PI*C*R);
             //urad_array_perp[l] = P_perp[l]/(M_PI*R*R);
-            urad_array_perp[l] = P_perp[l] * dfreqs_pol[l] / (2.0*M_PI*C*R);
-            urad_array_para[l] = P_para[l] * dfreqs_pol[l] / (2.0*M_PI*C*R); //have these separate for compton polarisation calculation
+            P_perpcum[l] += P_perp[l] * dx + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;//rolling average of power, IC adjusted to correct sync bins 
+            P_paracum[l] += P_para[l] * dx + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;
+            if (x <= R0) {
+            	urad_array_perp[l] = P_perpcum[l] * dfreqs_pol[l] / (M_PI*C*pow(R,2));//should have middle zone be a factor of 2 up from edge zone, can also include previous compton power, fit into sync bins
+            	urad_array_para[l] = P_paracum[l] * dfreqs_pol[l] / (M_PI*C*pow(R,2)); //have these separate for compton polarisation calculation
+            } else {
+                urad_array_perp[l] = (P_perp[l] + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] / (2*M_PI*C*R);
+                urad_array_para[l] = (P_para[l] + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] / (2*M_PI*C*R);
+            }
             //u_rad += urad_array[l];
             //printf("Ne_e %.5e\n", Ne_e[l]);
             //fprintf(photonpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\n", f_pol[l], (urad_array_perp[l]+urad_array_para[l]) /(f_pol[l]*H),(urad_array_perp[l]+urad_array_para[l]), f_em_max_IC[l], f_em_min_IC[l], f_pol_IC[l]);
+        }
+        for (l=0; l<array_size; l++) { //reset these values to be calculated this step
+            P_perpIC[l] = 0.0;
+            P_paraIC[l] = 0.0;
         }
         //printf("step\n\n");
 //        for (g=0; g<n_blocks; g++){
@@ -1007,8 +1054,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             IC_losses[i] *= dx;              //ALP
             P_perp[i] *= dx;  //polarisation powers
             P_para[i] *= dx;
-            P_perpIC[i] *= dx;
-            P_paraIC[i] *= dx;
+            //P_perpIC[i] *= dx;
+            //P_paraIC[i] *= dx;
 	       // fprintf(jfile, "\t%.5e", j[i]);
             //fprintf(freqfile, "\t%.5e", f_c[i]); //these are Doppler boosted later
             //fprintf(opfile, "\t%.5e", k[i]);//*(R/R_prev)*(R/R_prev));
@@ -1116,8 +1163,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
             P_para[i] = 0.0;//Reset
             P_perp[i] = 0.0;
-            P_paraIC[i] = 0.0;
-            P_perpIC[i] = 0.0;
+            //P_paraIC[i] = 0.0;
+            //P_perpIC[i] = 0.0;
             Ps_per_mIC_elec[i] = 0.0;
             Ps_per_m_elec[i] = 0.0;
 
@@ -1130,7 +1177,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
         nSteps+=1; //allows the number of jet sections to be determined
-        //printf("nStep, dx, x, B, R %.5d\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R);
+        printf("nStep, dx, x, B, R %.5d\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R);
 
 
         //save data needed at every jet section to solve line of sight opacity
@@ -1152,10 +1199,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //
 //        }
 
-//        if (nSteps == 30) {
-//            break;
-//        }
-        break;
+        if (nSteps == 200) {
+            break;
+        }
+        //break;
 
     }
 
@@ -1165,7 +1212,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //    n_radio = findClosest(f_pol,1.2E11/doppler_factor , array_size); //Radio band 5e-4 eV
 //    //printf("x,o,r %d\t%d\t%d\n",n_xray,n_opt,n_radio);
 
-    double newbins[array_size]; // rebinning for synchrotron to fit into IC bins, choose closest synchrotron flux to be added to IC flux
+    double newbins[array_size]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
     for (n=0; n<array_size; n++){
         ICS_StokesTotal[n][0] = S_StokesTotal[n][0] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], array_size)][0];
         ICS_StokesTotal[n][1] = S_StokesTotal[n][1] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], array_size)][1]; // ICS uses IC binning

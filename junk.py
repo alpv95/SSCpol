@@ -3,7 +3,7 @@ import matplotlib
 #matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from scipy.signal import savgol_filter
+#from scipy.signal import savgol_filter
 import math as math
 from jet_fns import *
 import matplotlib.cm as cm
@@ -22,7 +22,7 @@ def Theta_lab(theta_op_jet, gamma): #theta_opening in lab frame
 def Theta_jet(theta_op_lab, gamma): #theta_opening in jet frame
     return np.rad2deg(np.arctan(np.tan(np.deg2rad(theta_op_lab))*gamma))
 
-def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA as a function of energy
+def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fraction and EVPA as a function of energy
     #can plot
     #filename can be single string or list of strings to plot simultaneously
     legends = 0
@@ -30,49 +30,51 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
         filename = [filename]
         legends = 1
 
-    keydat = np.loadtxt('keyparams.txt')
+    keydat = np.loadtxt(keyfile)
+    if keydat.ndim == 1:
+        keydat = np.expand_dims(keydat,axis=0)
     #opdat = np.loadtxt('EBLOpacity.txt') #high energy gamma opacities for different z due to EBL
 
     #loading up data points for different blazars (need to change distances and redshift as well!!!)
     d_Blazar = 1000E6*3.08E18 # pc in cm #276E6pc BL_Lac, 144E6 Mkn501, 131E6 Mkn421, 891E6 J2143, 1000E6 J0721, 1800E6 3C279
     z = 0.3 #0.0686 BL-Lac, 0.034 Mkn501, 0.031 Mkn421, 0.211 J2143, 0.3 J0721, 0.536 3C279
-    theta_obs=keydat[2]#2.8
-    BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
-    Mkn501_pts = np.loadtxt('MKN501.txt')
-    Mkn421_pts = np.loadtxt('MKN421.txt')
-    C279_pts = np.loadtxt("3C279.txt")
-    C279_pts = C279_pts[:,[0,2]]
-    S50716_pts = np.loadtxt("S50716714.txt")
-    S50716_pts = S50716_pts[:,[0,2]]
-    ph_energy = BLLac_pts[:,0]
-    flux_BL = BLLac_pts[:,1]
-    ph_energy_MK501 = Mkn501_pts[:,0]
-    flux_MK501 = Mkn501_pts[:,1]
-    ph_energy_MK421 = Mkn421_pts[:,0]
-    flux_MK421 = Mkn421_pts[:,1]
+    theta_obs=keydat[0,2]#2.8
+    #BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
+    #Mkn501_pts = np.loadtxt('MKN501.txt')
+    #Mkn421_pts = np.loadtxt('MKN421.txt')
+    #C279_pts = np.loadtxt("3C279.txt")
+    #C279_pts = C279_pts[:,[0,2]]
+    #S50716_pts = np.loadtxt("S50716714.txt")
+    #S50716_pts = S50716_pts[:,[0,2]]
+    #ph_energy = BLLac_pts[:,0]
+    #flux_BL = BLLac_pts[:,1]
+    #ph_energy_MK501 = Mkn501_pts[:,0]
+    #flux_MK501 = Mkn501_pts[:,1]
+    #ph_energy_MK421 = Mkn421_pts[:,0]
+    #flux_MK421 = Mkn421_pts[:,1]
 
-    W_j=keydat[0]#5.0E20
-    gamma_bulk=keydat[1]#7.5#12.0
+    W_j=keydat[0,0]#5.0E20
+    gamma_bulk=keydat[0,1]#7.5#12.0
 
-    theta_open_p = keydat[3]
-    alpha = keydat[4]
-    B0 = keydat[5]
-    E_max = keydat[6]
-    n_blocks = keydat[7]
-    array_size = int(keydat[8]) #50, can change this here by hand
+    theta_open_p = keydat[0,3]
+    alpha = keydat[0,4]
+    B0 = keydat[0,5]
+    E_max = keydat[0,6]
+    n_blocks = keydat[0,7]
+    array_size = int(keydat[0,8]) #50, can change this here by hand
 
     beta_bulk=(1.0-(gamma_bulk**(-2.0)))**(0.5)
     doppler_factor = 1.0/(gamma_bulk*(1.0-beta_bulk*np.cos(np.deg2rad(theta_obs))))
 
 
     #define the bins
-    frdata = np.loadtxt('freqrange.txt')*doppler_factor#*doppler_factor#*gamma_bulk*2.8
-    fq_mins = frdata[:,0]
-    fq_maxs = frdata[:,1]
-    fq_mids = frdata[:,2]
-    fq_mins_IC = frdata[:,4]
-    fq_maxs_IC = frdata[:,5]
-    fq_mids_IC = frdata[:,6]
+    frdata = np.loadtxt(freqfile)*doppler_factor#*doppler_factor#*gamma_bulk*2.8
+    fq_mins = frdata[:array_size,0]
+    fq_maxs = frdata[:array_size,1]
+    fq_mids = frdata[:array_size,2]
+    fq_mins_IC = frdata[:array_size,4]
+    fq_maxs_IC = frdata[:array_size,5]
+    fq_mids_IC = frdata[:array_size,6]
 
     fig = plt.figure(2)
     # set height ratios for sublots
@@ -86,18 +88,18 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
                   alpha, 180 / np.pi * np.arctan(np.tan(np.pi * theta_open_p / 180) / gamma_bulk), theta_obs,
                   gamma_bulk, n_blocks))
     ax0.set_xscale("log")
-    ax0.set_xlim([1E-6, 1E13])
-    ax0.set_ylim([0, 1.0])
+    ax0.set_xlim([1E-5, 1E17])
+    ax0.set_ylim([0, 0.7])
     ax0.set_ylabel(r'$\Pi(\omega)$', size='13')
     ax05 = plt.subplot(gs[1], sharex=ax0)
-    ax05.set_xlim([1E-6, 1E13])
+    ax05.set_xlim([1E-5, 1E17])
     ax05.set_ylim([-90, 90])
     yticks = ax05.yaxis.get_major_ticks()
     ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='13')
     ax1 = plt.subplot(gs[2], sharex=ax0)
     ax1.set_yscale('log')
-    ax1.set_ylim([1E-14, 9.99E-10])
-    ax1.set_xlim([1E-6, 1E13])
+    ax1.set_ylim([1E-18, 9.99E-11])
+    ax1.set_xlim([1E-5, 1E17])
     ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='13')
     ax1.set_xlabel(r'$\nu$ [eV]', size='13')
     plt.setp(ax0.get_xticklabels(), visible=False)
@@ -117,7 +119,7 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
         stdpi_IC = np.zeros((array_size, 3))
         pi_ICS = np.zeros((array_size, 3))
         stdpi_ICS = np.zeros((array_size, 3))
-        n_examples = 20
+        n_examples = int(fullpi.shape[0]/array_size)
 
         for i in range(n_examples): #calculates average pi/evpa/power over many jet realisations
             #i=j*20
