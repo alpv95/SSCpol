@@ -37,7 +37,6 @@ int dx_set; // use to define smallest non zero population
 
 int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
-
     //enter the jet parameters
     double W_j = 1.3E37;  //3e37//W_jarray[counter]; //W jet power in lab frame 7.63E36. Should be OBSERVED POWER
     double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
@@ -64,6 +63,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     R = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);//7.32E13;
     double R_prev = R0; //initialize
     printf("Radius at jet base: %.5e \n", R);
+    printf("hello");
 
     //read in any required data (only Bessel Functions for now)
     FILE *FGfile;
@@ -209,6 +209,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(dfactor_perp, 0.0, n_blocks*n_blocks*array_size*sizeof(dfactor_perp[0][0][0]));
     double dfactor_para[n_blocks][n_blocks][array_size];
     memset(dfactor_para, 0.0, n_blocks*n_blocks*array_size*sizeof(dfactor_para[0][0][0]));
+    double dfactor_perptest[n_blocks][array_size];
+    memset(dfactor_perptest, 0.0, n_blocks*array_size*sizeof(dfactor_perptest[0][0]));
 
     int buffer_subset[n_blocks]; //different blocks have different buffer_sizes depending on their position in jet cross section
     for (i=0; i<n_blocks; i++){ //cant allocate non zero with memset
@@ -684,7 +686,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
           dx = dx_P;
         }
 
-
+        printf("hello");
 /*************************************************************************************************************/
         if (x == 0) {
             // max buffer_size is when x == 2R_array[min]
@@ -693,6 +695,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             Ppara_array = dmatrix(0,1,0,array_size);
             Pperp_array = dmatrix(0,1,0,array_size);
             if (R_array == NULL || dx_array == NULL) {
+                printf("malloc failed\n");
                 fprintf(stderr, "malloc failed\n");
                 return(-1);
             }
@@ -783,20 +786,20 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //TODO: circle area / arc length function,
             //TODO: need to break up this energy density into contributions from different neighbouring zones for polarization.
 
-
+            printf("hello1");
             for (n=0; n<n_blocks; n++) {
                 dxsum = 0;
                 for (i=0; i<buffer_subset[n]; i++){
                     dxsum += dx_array[i];
-                    urad_array_perp[n][l] += (Pperp_array[n][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
-                    urad_array_perp[n][l] += (Ppara_array[n][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                    urad_array_perp[n][l] += (Pperp_array[i][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                    urad_array_para[n][l] += (Ppara_array[i][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
                     counter = 0; //divides up number zones contributing at the same time
                     for (g=0; g<n_blocks; g++) {
                         dist = sqrt( pow(align[n][g][0],2) + pow(align[n][g][1],2) + pow(align[n][g][2],2));
                         if (dxsum > ((2 * dist / th) - th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])  && dxsum <= ((2 * dist / th) + th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])) {
                             counter += 1;
-                            dfactor_perp[n][g][l] += (Pperp_array[n][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
-                            dfactor_para[n][g][l] += (Ppara_array[n][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                            dfactor_perp[n][g][l] += (Pperp_array[i][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                            dfactor_para[n][g][l] += (Ppara_array[i][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
                         }
                     }
                     for (g=0; g<n_blocks; g++) {
@@ -805,14 +808,19 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                             dfactor_para[n][g][l] /= counter;
                         }
                     }
+                    for (g=0; g<n_blocks; g++) {
+                        dfactor_perptest[n][l] += dfactor_perp[n][g][l];
+                    }
+
                     // have to check uradARRAY[] = sum (dfactor over second index)
                     // dfactor array should be all that is needed, dfactor[g][h][l] will take over role of urad_array_perp[l]
                 }
 
             }
-
-
-
+            printf("urad perp1: %.5e\n", urad_array_perp[1][l]);
+            printf("dfactor_perp1: %.5e\n", dfactor_perptest[1][l]);
+            printf("urad perp0: %.5e\n", urad_array_perp[0][l]);
+            printf("dfactor_perp0: %.5e\n", dfactor_perptest[0][l]);
 
         }
 //            P_perpcum[l] += P_perp[l] * dx + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;//rolling average of power, IC adjusted to correct sync bins
