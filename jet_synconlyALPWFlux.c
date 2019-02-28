@@ -731,7 +731,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         //now shift rows in buffer down by 1, and assign new buffer values to top row afterwards
         if (x != 0 && buffer_size > 1) {
-            for (n = buffer_size - 2; n>=0; n++){
+            for (n = buffer_size - 2; n>=0; n--){
                 R_array[n+1] = R_array[n];
                 dx_array[n+1] = dx_array[n];
                 for (l=0; l<array_size; l++){
@@ -1333,10 +1333,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //
 //        }
 
-        if (nSteps == 1) {
+        if (nSteps == 3) {
             break;
         }
-        break;
+        //break;
 
     }
 
