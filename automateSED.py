@@ -18,7 +18,7 @@ try:
 except FileExistsError:
     print("Directory ", results_dir,  " already exists")
 
-subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm'])
+subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','nrutil.c','nrutil.h','-lm'])
 
 q = multiprocessing.Queue()
 inputs = [(0,i,1,1.5,1,0,task_id) for i in range(1)] #these are saved in keyparams along with more

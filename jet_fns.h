@@ -1,6 +1,7 @@
 #ifndef jet_fns_h
 #define jet_fns_h
 
+double circle_area(double th, double dx, double x, double R);
 void arange(double array[], int nvals);
 void log10spaceWithMidpoints(double *bounds, double *midpoints, double start, double end, int no);
 void elecEnergies(double array[], double minEn,double maxEn, int length);

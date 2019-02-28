@@ -5,6 +5,34 @@
 
 /* Program to store some useful Lorentz transform and jets fns */
 
+//Calculates the area of intersection between circle of radius R (jet radius) and circle of radius x
+double circle_area(double th, double dx, double x, double R){
+    // th is the centre of desired circle to be calculated as a fraction of R
+    double area;
+    double d = th * R; //distance between centre points
+    double r = x;
+    double r_low = x-dx; //required for annulus calculation
+
+    if (d <= R - r){ //whole emission circle fits in jet circle
+        if (x == dx) { //first contribution is full circle
+            return area = M_PI * pow(dx,2);
+        } else {
+            return area = M_PI * (pow(x,2) - pow((x-dx),2)); //area of annulus
+        }
+    }
+    else { //emission circle overlaps jet circle, should always be annulus in this case
+        double d_1 = (pow(R,2) - pow(r,2) + pow(d,2)) / (2 * d);
+        double d_2 = d - d_1;
+        double d_1low = (pow(R,2) - pow(r_low,2) + pow(d,2)) / (2 * d);
+        double d_2low = d - d_1low;
+
+        double area_low = pow(R,2) * acos(d_1low/R) - d_1low * sqrt(pow(R,2) - pow(d_1low,2)) + pow(r_low,2) * acos(d_2low/r_low) - d_2low * sqrt(pow(r_low,2) - pow(d_2low,2));
+
+        return area = pow(R,2) * acos(d_1/R) - d_1 * sqrt(pow(R,2) - pow(d_1,2)) + pow(r,2) * acos(d_2/r) - d_2 * sqrt(pow(r,2) - pow(d_2,2)) - area_low; //annulus area
+    }
+}
+
+
 void arange(double array[], int nvals)
 /* Analogy to numpy.linspace */
 {

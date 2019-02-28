@@ -4,6 +4,7 @@
 #include <string.h>
 #include "jet_fns.h"
 #include "mtwister.h"
+#include "nrutil.h"
 #include <time.h>
 
 
@@ -42,7 +43,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double L_jet = 5E20;// 6E11;//1E19;//6E12;// 1E19;// 6E12;//6E12; //1.0E19; //length in m in the fluid frame
     double B = 1E-4, B0 = 1E-4; //4e-3 4e-5 //8e-5//0.000268; //B-field at jet base
     double R0 = 0.0, R = 0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well 
-    double R_prev = 0.0, B_prev = 0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
+    double B_prev = 0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double E_min = 5.11E6; // Minimum electron energy 
     double E_max = 1.7E10;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
     double alpha = 1.85;//1.95;//1.9//1.95//2.000001; // PL index of electrons
@@ -61,6 +62,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //define radius at jet base
     R0 = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);//7.32E13;
     R = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);//7.32E13;
+    double R_prev = R0; //initialize
     printf("Radius at jet base: %.5e \n", R);
 
     //read in any required data (only Bessel Functions for now)
@@ -187,21 +189,38 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double Ps_per_m_IC[array_size]; //IC power per m
     double Ps_per_mIC_elec[array_size]; //energy lost by each electron bin per m of IC emission
     memset(Ps_per_mIC_elec, 0.0, array_size*sizeof(Ps_per_mIC_elec[0]));
-    double urad_array_perp[array_size]; //photon energy density
-    memset(urad_array_perp, 0.0, array_size*sizeof(urad_array_perp[0]));
-    double urad_array_para[array_size];
-    memset(urad_array_para, 0.0, array_size*sizeof(urad_array_para[0]));
+    double IC_losses[array_size]; //store electron IC energy losses
+
+    //******************************** Inititalise seed photon energy density variables *************************************//
+
+    //want to allocate these as dynamic arrays so can change their size with realloc
+    double *R_array, *dx_array, **Pperp_array, **Ppara_array;
+    double *ptri,**ptrii;
+    int counter;
+    double dxsum = 0;
+    double Area0;
+    double dist = 0;
+
+    double urad_array_perp[n_blocks][array_size]; //photon energy density
+    memset(urad_array_perp, 0.0, n_blocks*array_size*sizeof(urad_array_perp[0][0]));
+    double urad_array_para[n_blocks][array_size];
+    memset(urad_array_para, 0.0, n_blocks*array_size*sizeof(urad_array_para[0][0]));
+    double dfactor_perp[n_blocks][n_blocks][array_size]; //photon energy density
+    memset(dfactor_perp, 0.0, n_blocks*n_blocks*array_size*sizeof(dfactor_perp[0][0][0]));
+    double dfactor_para[n_blocks][n_blocks][array_size];
+    memset(dfactor_para, 0.0, n_blocks*n_blocks*array_size*sizeof(dfactor_para[0][0][0]));
+
+    int buffer_subset[n_blocks]; //different blocks have different buffer_sizes depending on their position in jet cross section
+    for (i=0; i<n_blocks; i++){ //cant allocate non zero with memset
+        buffer_subset[i] = 1;
+    }
+    int buffer_size = 1;
+
+
     double P_perpcum[array_size]; //store cumulative synchrotron power for use as synchrotron seed power for compton at each step (all photons kept for now)
     memset(P_perpcum, 0.0, array_size*sizeof(P_perpcum[0]));
     double P_paracum[array_size];
     memset(P_paracum, 0.0, array_size*sizeof(P_paracum[0]));
-    double IC_losses[array_size]; //store electron IC energy losses
-
-    //******************************** Inititalise seed photon energy density variables *************************************//
-    double Pperp_array[40][array_size];
-    double Ppara_array[40][array_size]; //need to keep a queue of prior jet step values of these for energy density calculation
-    double dx_array[40]; //except need all rows to drop an index each time
-    double R_array[40];
 
     //****************Initialise Polarisation variables *****************************************************************************//
     //first set frequency bins for polarised powers to drop into:
@@ -381,37 +400,37 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
         else if (i>0 && i<7){
 
-            theta_r[i] = th/(2*n_rings);
+            theta_r[i] = th/(2*(n_rings+0.5));
             theta_phi[i] = -M_PI+(i-1)*2*M_PI/6;
 
         }
         else if (i>6 && i<19){
 
-            theta_r[i] = 2*th/(2*n_rings);
+            theta_r[i] = 2*th/(2*(n_rings+0.5));
             theta_phi[i] = -M_PI+(i-7)*2*M_PI/12;
 
         }
         else if (i>18 && i<37){
 
-            theta_r[i] = 3*th/(2*n_rings);
+            theta_r[i] = 3*th/(2*(n_rings+0.5));
             theta_phi[i] = -M_PI+(i-19)*2*M_PI/18;
 
         }
         else if (i>36 && i<61){
 
-            theta_r[i] = 4*th/(2*n_rings);
+            theta_r[i] = 4*th/(2*(n_rings+0.5));
             theta_phi[i] = -M_PI+(i-37)*2*M_PI/24;
 
         }
         else if (i>60 && i<91){
 
-            theta_r[i] = 5*th/(2*n_rings);
+            theta_r[i] = 5*th/(2*(n_rings+0.5));
             theta_phi[i] = -M_PI+(i-61)*2*M_PI/30;
 
         }
         else if (i>90 && i<127){
 
-            theta_r[i] = 6*th/(2*n_rings);
+            theta_r[i] = 6*th/(2*(n_rings+0.5));
             theta_phi[i] = -M_PI+(i-91)*2*M_PI/36;
 
         }
@@ -429,16 +448,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //for (i=0; i<n_blocks; i++){
     //    fprintf(block_thetafile, "\t%.5e", theta_tot[i]); //saving the angle to the direction of view of each block to be used in python file for doppler boost
     //}
-    //alignment vector matrix for each block to every other block, for use in Synchrotron mixing between zones for IC emission:
+    //alignment vector matrix for each block to every other block, for use in Synchrotron mixing between zones for IC emission, distances are in units of theta_r
     //assuming jet section is flat 2D (ok assumption given large section size) but have z component to rotate with theta_obs
     //remember to add +1 to vector lengths so that 1/r is never 1/0
     double align[n_blocks][n_blocks][3]; //vector from m zone to i zone
     double unitalign[n_blocks][n_blocks][3]; //unit vector from m zone to i zone RPAR adjusted
     for (i=0; i<n_blocks; i++){
         for (m=0; m<n_blocks; m++){
-            align[i][m][0] = cos(deg2rad(theta_obs))*((theta_r[i]/(th/(2*n_rings)))*cos(theta_phi[i]) - (theta_r[m]/(th/(2*n_rings)))*cos(theta_phi[m]));
-            align[i][m][1] = (theta_r[i]/(th/(2*n_rings)))*sin(theta_phi[i]) - (theta_r[m]/(th/(2*n_rings)))*sin(theta_phi[m]);
-            align[i][m][2] = -sin(deg2rad(theta_obs))*((theta_r[i]/(th/(2*n_rings)))*cos(theta_phi[i]) - (theta_r[m]/(th/(2*n_rings)))*cos(theta_phi[m]));
+            align[i][m][0] = cos(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
+            align[i][m][1] = theta_r[i]*sin(theta_phi[i]) - theta_r[m]*sin(theta_phi[m]);
+            align[i][m][2] = -sin(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
         }
     }
 
@@ -666,7 +685,70 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
 
 
+/*************************************************************************************************************/
+        if (x == 0) {
+            // max buffer_size is when x == 2R_array[min]
+            R_array = (double *)malloc(sizeof(double));
+            dx_array = (double *)malloc(sizeof(double));
+            Ppara_array = dmatrix(0,1,0,array_size);
+            Pperp_array = dmatrix(0,1,0,array_size);
+            if (R_array == NULL || dx_array == NULL) {
+                fprintf(stderr, "malloc failed\n");
+                return(-1);
+            }
+            R_array[0] = R0;
+            dx_array[0] = dx;
+            for (l=0; l<array_size; l++){
+                Ppara_array[0][l] = P_para[l];
+                Pperp_array[0][l] = P_perp[l];
+            }
 
+        } else if (2*theta_r[n_blocks - 1]/th * R_array[0] + R_array[findminelement(R_array,buffer_size)] > x) { //add rows to matrices, else do nothing
+            buffer_size += 1;
+            for (n=0; n<n_blocks; n++){
+                if (2*theta_r[n]/th * R_array[0] + R_array[findminelement(R_array,buffer_size)] > x){
+                    buffer_subset[n] += 1;
+                }
+            }
+            ptri = (double *)realloc(R_array, sizeof(R_array) + sizeof(double)); // add one row
+            R_array = ptri;
+
+            ptri = (double *)realloc(dx_array, sizeof(dx_array) + sizeof(double)); // add one row
+            dx_array = ptri;
+
+            ptrii = (double **)realloc(Ppara_array, sizeof(Ppara_array) + sizeof(Ppara_array)/sizeof(Ppara_array[0])); //increment rows by 1
+            Ppara_array = ptrii;
+            Ppara_array[buffer_size - 1] = (double *)malloc(array_size * sizeof(double)); //allocate memory for new row
+
+            ptrii = (double **)realloc(Pperp_array, sizeof(Pperp_array) + sizeof(Pperp_array)/sizeof(Pperp_array[0])); //increment rows by 1
+            Pperp_array = ptrii;
+            Pperp_array[buffer_size - 1] = (double *)malloc(array_size * sizeof(double)); //allocate memory for new row
+
+        }
+
+        //now shift rows in buffer down by 1, and assign new buffer values to top row afterwards
+        if (x != 0 && buffer_size > 1) {
+            for (n = buffer_size - 2; n>=0; n++){
+                R_array[n+1] = R_array[n];
+                dx_array[n+1] = dx_array[n];
+                for (l=0; l<array_size; l++){
+                    Pperp_array[n+1][l] = Pperp_array[n][l];
+                    Ppara_array[n+1][l] = Ppara_array[n][l];
+                }
+            }
+
+            R_array[0] = R;
+            dx_array[0] = dx;
+            for (l=0; l<array_size; l++){
+                    Pperp_array[0][l] = P_perp[l];
+                    Ppara_array[0][l] = P_para[l];
+            }
+        }
+
+/******************************************************************************************************************/
+
+
+        Area0 = circle_area(2*theta_r[0]/th,dx_array[0],dx_array[0],R_array[0]);
 
         for (l=0; l<array_size; l++){
             //P_para[l] = 0.2*P_perp[l];
@@ -689,25 +771,63 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 //printf("SSStokes123 %.5e\t%.5e\t%.5e\n", S_Stokes[g][l][0],S_Stokes[g][l][1],S_Stokes[g][l][2]);
             }
 
-            Ps_per_m[l] = (P_perp[l] + P_para[l]) * dfreqs_pol[l];
+            //Ps_per_m[l] = (P_perp[l] + P_para[l]) * dfreqs_pol[l];
             //printf("Ps_per_me_test, Ps_per_m %.5e\t%.5e\n", Ps_per_m_test[l],Ps_per_m[l]);
             //printf("Ps_permSYNC %.5e\n", Ps_per_m[l]);
             //photon energy density
             //urad_array_perp[l] = P_perp[l]/(2.0*M_PI*C*R);
             //urad_array_perp[l] = P_perp[l]/(M_PI*R*R);
-            P_perpcum[l] += P_perp[l] * dx + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;//rolling average of power, IC adjusted to correct sync bins 
-            P_paracum[l] += P_para[l] * dx + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;
-            if (x <= R0) {
-            	urad_array_perp[l] = P_perpcum[l] * dfreqs_pol[l] / (M_PI*C*pow(R,2));//should have middle zone be a factor of 2 up from edge zone, can also include previous compton power, fit into sync bins
-            	urad_array_para[l] = P_paracum[l] * dfreqs_pol[l] / (M_PI*C*pow(R,2)); //have these separate for compton polarisation calculation
-            } else {
-                urad_array_perp[l] = (P_perp[l] + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] / (2*M_PI*C*R);
-                urad_array_para[l] = (P_para[l] + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] / (2*M_PI*C*R);
+
+
+            //Energy Density loop, calculates the total energy density seen at each zone for this section of the jet
+            //TODO: circle area / arc length function,
+            //TODO: need to break up this energy density into contributions from different neighbouring zones for polarization.
+
+
+            for (n=0; n<n_blocks; n++) {
+                dxsum = 0;
+                for (i=0; i<buffer_subset[n]; i++){
+                    dxsum += dx_array[i];
+                    urad_array_perp[n][l] += (Pperp_array[n][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                    urad_array_perp[n][l] += (Ppara_array[n][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                    counter = 0; //divides up number zones contributing at the same time
+                    for (g=0; g<n_blocks; g++) {
+                        dist = sqrt( pow(align[n][g][0],2) + pow(align[n][g][1],2) + pow(align[n][g][2],2));
+                        if (dxsum > ((2 * dist / th) - th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])  && dxsum <= ((2 * dist / th) + th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])) {
+                            counter += 1;
+                            dfactor_perp[n][g][l] += (Pperp_array[n][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                            dfactor_para[n][g][l] += (Ppara_array[n][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                        }
+                    }
+                    for (g=0; g<n_blocks; g++) {
+                        if (dxsum > ((2 * dist / th) - th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])  && dxsum <= ((2 * dist / th) + th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i]))  {
+                            dfactor_perp[n][g][l] /= counter;
+                            dfactor_para[n][g][l] /= counter;
+                        }
+                    }
+                    // have to check uradARRAY[] = sum (dfactor over second index)
+                    // dfactor array should be all that is needed, dfactor[g][h][l] will take over role of urad_array_perp[l]
+                }
+
             }
+
+
+
+
+        }
+//            P_perpcum[l] += P_perp[l] * dx + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;//rolling average of power, IC adjusted to correct sync bins
+//            P_paracum[l] += P_para[l] * dx + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;
+//            if (x <= R0) {
+//            	urad_array_perp[l] = P_perpcum[l] * dfreqs_pol[l] / (M_PI*C*pow(R,2));//should have middle zone be a factor of 2 up from edge zone, can also include previous compton power, fit into sync bins
+//            	urad_array_para[l] = P_paracum[l] * dfreqs_pol[l] / (M_PI*C*pow(R,2)); //have these separate for compton polarisation calculation
+//            } else {
+//                urad_array_perp[l] = (P_perp[l] + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] / (2*M_PI*C*R);
+//                urad_array_para[l] = (P_para[l] + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] / (2*M_PI*C*R);
+//            }
             //u_rad += urad_array[l];
             //printf("Ne_e %.5e\n", Ne_e[l]);
             //fprintf(photonpop, "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\n", f_pol[l], (urad_array_perp[l]+urad_array_para[l]) /(f_pol[l]*H),(urad_array_perp[l]+urad_array_para[l]), f_em_max_IC[l], f_em_min_IC[l], f_pol_IC[l]);
-        }
+
         for (l=0; l<array_size; l++) { //reset these values to be calculated this step
             P_perpIC[l] = 0.0;
             P_paraIC[l] = 0.0;
@@ -745,13 +865,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 //printf("Btheta [deg] \t%.5e", Btheta*180/M_PI);
 
                 if (h==g){
-                    zone_d = 1;
+//                    zone_d = 1;
                     phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
                     //rotate to B_effective
-                    dfactor = 1; //adjust so total IC power always the same
+//                    dfactor = 1; //adjust so total IC power always the same
 
                 } else {
-                    zone_d = sqrt(pow(align[h][g][0],2) + pow(align[h][g][1],2) + pow(align[h][g][2],2));
+//                    zone_d = sqrt(pow(align[h][g][0],2) + pow(align[h][g][1],2) + pow(align[h][g][2],2));
                     //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
                     //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
                     cosk_single = unitalign[h][g][2]; //z component isnt affected by -zeta rotation
@@ -768,7 +888,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     phik_start = findClosest(phik, phik_single, 10), phik_end = phik_start + 1;
                     printf("coskphik %.5e\t%d\t%.5e\t%d\n",cosk_single,cosk_start,phik_single,phik_start);
                     //zone_d += 1;
-                    dfactor = 100 /(zone_d + 1); //* asin(1/(2*zone_d))/M_PI; //this gives the 1/r dependence
+//                    dfactor = 100 /(zone_d + 1); //* asin(1/(2*zone_d))/M_PI; //this gives the 1/r dependence
                     //printf("zoned %.5e\n", zone_d);
                     //rotate to g's B_effective, but the B_effective given by the DOppler factor for that zone
 
@@ -829,14 +949,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         //3.95417e-103
                                         //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
-                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (urad_array_perp[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor //this is Power(freq), multiply by freq later to get nuF(nu)
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik //* dfactor //this is Power(freq), multiply by freq later to get nuF(nu)
                                         * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
                                         //printf("Pperpperp %.5e\n", Pperpperp);
                                         IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
 
-                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (urad_array_para[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -844,7 +964,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                         IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
                                         //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
 
-                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (urad_array_perp[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -853,7 +973,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         //printf("Pparaperp1 %.5e\n", Pparaperp);
 
-                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (urad_array_para[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -881,14 +1001,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //                                        Pparaperp = 0.0;
 //                                        Pparapara = 0.0;
 
-                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (urad_array_perp[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
                                         //printf("Pperpperp1 %.5e\n", Pperpperp);
                                         IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
 
-                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (urad_array_para[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -896,7 +1016,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                         IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
                                         //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
 
-                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (urad_array_perp[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -905,7 +1025,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         //printf("Pparaperp1 %.5e\n", Pparaperp);
 
-                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (urad_array_para[l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
                                         * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -947,10 +1067,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         //printf("ICPI %.5e\t%.5e\t%.5e\n", IC_Pi[30],IC_PA[10],S_Pi[45]);
 
         for (i=0; i<array_size; i++){
-            u_rad += (urad_array_perp[i]+urad_array_para[i]);
+            for (n=0; n<n_blocks; n++)
+            u_rad += (urad_array_perp[n][i]+urad_array_para[n][i]);
             //printf("Ps_permtest %.5e\n", Ps_per_m_test[i]);
             //printf("u_rad %.5e\n", u_rad);
         }
+        u_rad /= n_blocks; //use average energy density for electron losses, otherwise different blocks cool at different rates - IC cooling isnt that important anyway
         
         for (i=0; i<array_size; i++) //1.79 //0.85
         {
@@ -1173,6 +1295,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
         memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* n_blocks * array_size * 3); //reset these to 0 for next section
         memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* n_blocks * array_size * 3);
+        memset(urad_array_perp, 0, sizeof(urad_array_perp[0][0])* n_blocks * array_size); //reset these to 0 for next section
+        memset(urad_array_para, 0, sizeof(urad_array_para[0][0])* n_blocks * array_size);
+        memset(dfactor_perp, 0, sizeof(dfactor_perp[0][0][0])* n_blocks * n_blocks * array_size); //reset these to 0 for next section
+        memset(dfactor_para, 0, sizeof(dfactor_para[0][0][0])* n_blocks * n_blocks * array_size);
 
 
 
@@ -1199,10 +1325,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //
 //        }
 
-        if (nSteps == 200) {
+        if (nSteps == 1) {
             break;
         }
-        //break;
+        break;
 
     }
 
@@ -1211,6 +1337,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //    n_opt = findClosest(f_pol,6E14/doppler_factor , array_size); //Optical band 2.5 eV
 //    n_radio = findClosest(f_pol,1.2E11/doppler_factor , array_size); //Radio band 5e-4 eV
 //    //printf("x,o,r %d\t%d\t%d\n",n_xray,n_opt,n_radio);
+
+    free(R_array);
+    free(dx_array);
+    free_dmatrix(Pperp_array,0,buffer_size,0,array_size);
+    free_dmatrix(Ppara_array,0,buffer_size,0,array_size);
 
     double newbins[array_size]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
     for (n=0; n<array_size; n++){
