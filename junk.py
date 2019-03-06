@@ -3,7 +3,7 @@ import matplotlib
 #matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-#from scipy.signal import savgol_filter
+from scipy.signal import savgol_filter
 import math as math
 from jet_fns import *
 import matplotlib.cm as cm
@@ -131,9 +131,9 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
             pi_IC[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 4]
             pi_IC[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 5]
 
-            # pi_ICS[:, 0] += fullpi[(i * array_size):(i * array_size) + array_size, 6]
-            # pi_ICS[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 7]
-            # pi_ICS[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 8]
+            pi_ICS[:, 0] += fullpi[(i * array_size):(i * array_size) + array_size, 6]
+            pi_ICS[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 7]
+            pi_ICS[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 8]
 
         pi = pi / n_examples
         pi_IC = pi_IC / n_examples
@@ -149,10 +149,10 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
             stdpi_IC[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 4] - pi_IC[:, 1]) ** 2
             stdpi_IC[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 5] - pi_IC[:, 2]) * 1.0E7 * (1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0)))**2
 
-            # stdpi_ICS[:, 0] += (fullpi[(i * array_size):(i * array_size) + array_size, 6] - pi_ICS[:, 0]) ** 2
-            # stdpi_ICS[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 7] - pi_ICS[:, 1]) ** 2
-            # stdpi_ICS[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 8] - pi_ICS[:, 2]) * 1.0E7 * (
-            #             1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))) ** 2
+            stdpi_ICS[:, 0] += (fullpi[(i * array_size):(i * array_size) + array_size, 6] - pi_ICS[:, 0]) ** 2
+            stdpi_ICS[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 7] - pi_ICS[:, 1]) ** 2
+            stdpi_ICS[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 8] - pi_ICS[:, 2]) * 1.0E7 * (
+                         1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))) ** 2
 
         stdpi = np.sqrt(stdpi / (n_examples))
         stdpi_IC = np.sqrt(stdpi_IC / (n_examples))
@@ -195,7 +195,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
         #savgol filter to smooth bumpy ICS from rebinning larger IC bins in synchrotron ones.
         #np.savetxt("singleSED.txt", np.array([freqtoeV(fq_mids),P_detected]))
         line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0], linestyle='-.',color=(j/17,0.2,0.2), label='IC')#Inverse Compton
-        #line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
+        line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
         line4 = ax1.plot(freqtoeV(fq_mids), P_detected, '-', color=(0.1,j/17,1), label='synchrotron') #synchrotron
         line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
         line004 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')

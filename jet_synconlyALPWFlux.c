@@ -63,7 +63,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     R = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);//7.32E13;
     double R_prev = R0; //initialize
     printf("Radius at jet base: %.5e \n", R);
-    printf("hello");
 
     //read in any required data (only Bessel Functions for now)
     FILE *FGfile;
@@ -92,11 +91,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     strcat(bdata,task_idst);
     char kparams[30] = "results/keyparams";
     strcat(kparams,task_idst);
+    //char Edensity[30] = "results/energydensity";
+    //strcat(Edensity,task_idst);
     char testfil[30] = "results/TESTFIL";
     strcat(testfil,task_idst);
 		
     //define some files to store output data
-    FILE *freqrange, *basicdata, *keyparams, *TESTFIL2;
+    FILE *freqrange, *basicdata, *keyparams, *energydensity ,*TESTFIL2;
 
     //Nfile = fopen("Ndata.txt", "w"); //store electron populations
     freqrange = fopen(frange, "w");//store frequency bin boundaries
@@ -109,6 +110,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //photonpop = fopen("photonpop.txt", "w"); //store sync photon populations at various points down the jet
     //jfile = fopen("jfile_re.txt", "w");
     keyparams = fopen(kparams, "w"); //store Lj, gamma_bulk, theta_obs and theta_open
+    //energydensity = fopen(Edensity, "w");
     //ICfile = fopen("ICfile.txt", "w"); //ALP
     //Pperpfile = fopen("Pperpfile.txt", "w"); //polarisations
     //Pparafile = fopen("Pparafile.txt", "w");
@@ -196,11 +198,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //want to allocate these as dynamic arrays so can change their size with realloc
     double *R_array, *dx_array, **Pperp_array, **Ppara_array;
     double *ptri,**ptrii;
-    int counter;
+    double counter = 0.0;
     double dxsum = 0;
     double Area0;
     double dist = 0;
-
+    
+    double urad_array_perpTEST[array_size]; //photon energy density
+    memset(urad_array_perpTEST, 0.0, array_size*sizeof(urad_array_perpTEST[0]));
     double urad_array_perp[n_blocks][array_size]; //photon energy density
     memset(urad_array_perp, 0.0, n_blocks*array_size*sizeof(urad_array_perp[0][0]));
     double urad_array_para[n_blocks][array_size];
@@ -211,6 +215,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(dfactor_para, 0.0, n_blocks*n_blocks*array_size*sizeof(dfactor_para[0][0][0]));
     double dfactor_perptest[n_blocks][array_size];
     memset(dfactor_perptest, 0.0, n_blocks*array_size*sizeof(dfactor_perptest[0][0]));
+    double dfactor_temp_perp = 0;
+    double dfactor_temp_para = 0;
 
     int buffer_subset[n_blocks]; //different blocks have different buffer_sizes depending on their position in jet cross section
     for (i=0; i<n_blocks; i++){ //cant allocate non zero with memset
@@ -454,12 +460,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //assuming jet section is flat 2D (ok assumption given large section size) but have z component to rotate with theta_obs
     //remember to add +1 to vector lengths so that 1/r is never 1/0
     double align[n_blocks][n_blocks][3]; //vector from m zone to i zone
-    double unitalign[n_blocks][n_blocks][3]; //unit vector from m zone to i zone RPAR adjusted
+    double unitalign0[n_blocks][n_blocks][3]; //unit vector from m zone to i zone RPAR adjusted
+    double unitalign1[n_blocks][n_blocks][3];// unit vector from m zone to i zone RPAR adjusted with offset cosk
+    double unitalign2[n_blocks][n_blocks][3];
+    double unitalign3[n_blocks][n_blocks][3];
+    double unitalign4[n_blocks][n_blocks][3];
     for (i=0; i<n_blocks; i++){
         for (m=0; m<n_blocks; m++){
-            align[i][m][0] = cos(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
+            align[i][m][0] = theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]);//cos(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
             align[i][m][1] = theta_r[i]*sin(theta_phi[i]) - theta_r[m]*sin(theta_phi[m]);
-            align[i][m][2] = -sin(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
+            align[i][m][2] = 0.0;//-sin(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
         }
     }
 
@@ -500,7 +510,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double zeta;
     double psi;
     int phik_start, phik_end, cosk_start, cosk_end;
-    double cosk_single, phik_single;
+    double cosk_single[5];
+    double phik_single[5];
+    int cosk_list[5];
+    int phik_list[5];
     double u_rad = 0.0;
     double Blength; //for normalization
     double logdif;
@@ -615,7 +628,27 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     DD_3Beffective(align[l][i][0],align[l][i][1],align[l][i][2],
                                 cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign[l][i]);
+                                gamma_bulk,unitalign0[l][i]);
+
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(20*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)), //adding cosk offsets
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,unitalign1[l][i]);
+                   
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(40*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,unitalign2[l][i]);
+
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-20*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,unitalign3[l][i]);
+                    
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-40*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,unitalign4[l][i]);
                 }
             }
         }
@@ -686,14 +719,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
           dx = dx_P;
         }
 
-        printf("hello");
 /*************************************************************************************************************/
         if (x == 0) {
             // max buffer_size is when x == 2R_array[min]
             R_array = (double *)malloc(sizeof(double));
             dx_array = (double *)malloc(sizeof(double));
-            Ppara_array = dmatrix(0,1,0,array_size);
-            Pperp_array = dmatrix(0,1,0,array_size);
+            Pperp_array = (double **)malloc(1 * sizeof(double *));
+            Pperp_array[0] = (double *)malloc(array_size * sizeof(double)); //dynamically allocating 2D double arrays
+            Ppara_array = (double **)malloc(1 * sizeof(double *));
+            Ppara_array[0] = (double *)malloc(array_size * sizeof(double));
+
             if (R_array == NULL || dx_array == NULL) {
                 printf("malloc failed\n");
                 fprintf(stderr, "malloc failed\n");
@@ -706,24 +741,25 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 Pperp_array[0][l] = P_perp[l];
             }
 
-        } else if (2*theta_r[n_blocks - 1]/th * R_array[0] + R_array[findminelement(R_array,buffer_size)] > x) { //add rows to matrices, else do nothing
-            buffer_size += 1;
+        } else if (2*theta_r[n_blocks - 1]/th * R_array[0] + R_array[findminelement(R_array,buffer_size)] > x + dx) { //add rows to matrices, else do nothing
             for (n=0; n<n_blocks; n++){
-                if (2*theta_r[n]/th * R_array[0] + R_array[findminelement(R_array,buffer_size)] > x){
+                if (2*theta_r[n]/th * R_array[0] + R_array[findminelement(R_array,buffer_size)] > x + dx){
                     buffer_subset[n] += 1;
                 }
             }
-            ptri = (double *)realloc(R_array, sizeof(R_array) + sizeof(double)); // add one row
+            buffer_size += 1;
+
+            ptri = (double *)realloc(R_array, buffer_size * sizeof(R_array)); // add one row
             R_array = ptri;
 
-            ptri = (double *)realloc(dx_array, sizeof(dx_array) + sizeof(double)); // add one row
+            ptri = (double *)realloc(dx_array, buffer_size * sizeof(dx_array)); // add one row
             dx_array = ptri;
 
-            ptrii = (double **)realloc(Ppara_array, sizeof(Ppara_array) + sizeof(Ppara_array)/sizeof(Ppara_array[0])); //increment rows by 1
+            ptrii = (double **)realloc(Ppara_array, buffer_size * sizeof(*Ppara_array)); //increment rows by 1
             Ppara_array = ptrii;
             Ppara_array[buffer_size - 1] = (double *)malloc(array_size * sizeof(double)); //allocate memory for new row
 
-            ptrii = (double **)realloc(Pperp_array, sizeof(Pperp_array) + sizeof(Pperp_array)/sizeof(Pperp_array[0])); //increment rows by 1
+            ptrii = (double **)realloc(Pperp_array, buffer_size * sizeof(*Pperp_array)); //increment rows by 1
             Pperp_array = ptrii;
             Pperp_array[buffer_size - 1] = (double *)malloc(array_size * sizeof(double)); //allocate memory for new row
 
@@ -778,7 +814,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //printf("Ps_per_me_test, Ps_per_m %.5e\t%.5e\n", Ps_per_m_test[l],Ps_per_m[l]);
             //printf("Ps_permSYNC %.5e\n", Ps_per_m[l]);
             //photon energy density
-            //urad_array_perp[l] = P_perp[l]/(2.0*M_PI*C*R);
+            //urad_array_perpTEST[l] = P_perp[l] * dfreqs_pol[l] / (2.0*M_PI*C*R);
             //urad_array_perp[l] = P_perp[l]/(M_PI*R*R);
 
 
@@ -786,43 +822,57 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //TODO: circle area / arc length function,
             //TODO: need to break up this energy density into contributions from different neighbouring zones for polarization.
 
-            printf("hello1");
             for (n=0; n<n_blocks; n++) {
                 dxsum = 0;
                 for (i=0; i<buffer_subset[n]; i++){
-                    dxsum += dx_array[i];
-                    urad_array_perp[n][l] += (Pperp_array[i][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
-                    urad_array_para[n][l] += (Ppara_array[i][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
-                    counter = 0; //divides up number zones contributing at the same time
-                    for (g=0; g<n_blocks; g++) {
-                        dist = sqrt( pow(align[n][g][0],2) + pow(align[n][g][1],2) + pow(align[n][g][2],2));
-                        if (dxsum > ((2 * dist / th) - th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])  && dxsum <= ((2 * dist / th) + th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])) {
-                            counter += 1;
-                            dfactor_perp[n][g][l] += (Pperp_array[i][l] +  P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
-                            dfactor_para[n][g][l] += (Ppara_array[i][l] +  P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)]) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th,dx_array[i],dxsum,R_array[i]) / Area0) * (dx_array[0] / dxsum);
-                        }
+		    if (dxsum + dx_array[i] < 2*theta_r[n]/th * R_array[0] + R_array[i]){ //this takes place of buffer_subset, making sure emission from further than R_i not contributing
+			dxsum += dx_array[i];
+                        urad_array_perp[n][l] += (Pperp_array[i][l] ) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th * R_array[0],dx_array[i],dxsum, R_array[i]) / Area0) * (dx_array[0] / dxsum);
+                        urad_array_para[n][l] += (Ppara_array[i][l] ) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th * R_array[0],dx_array[i],dxsum, R_array[i]) / Area0) * (dx_array[0] / dxsum);
+		    			
+                      counter = 0.0; //divides up number zones contributing at the same time
+                      for (g=0; g<n_blocks; g++) {
+                          dist = fabs( sqrt( pow( 2*align[g][0][0]/th*R_array[i] - 2*theta_r[n]/th*R_array[0]*cos(theta_phi[n]),2) + pow( 2*align[g][0][1]/th*R_array[i] - 2*theta_r[n]/th*R_array[0]*sin(theta_phi[n]),2) ) - dxsum );
+                          if (dist < 1/(2*(n_rings + 0.5))*R_array[i]) {
+                             counter += 1;
+                          }
+                      }
+                      //printf("counter %.5e\n",counter);
+                      for (g=0; g<n_blocks; g++) {
+                          dist = fabs( sqrt( pow( 2*align[g][0][0]/th*R_array[i] - 2*theta_r[n]/th*R_array[0]*cos(theta_phi[n]),2) + pow( 2*align[g][0][1]/th*R_array[i] - 2*theta_r[n]/th*R_array[0]*sin(theta_phi[n]),2) ) - dxsum );
+                          if (dist < 1/(2*(n_rings + 0.5))*R_array[i]){
+                              dfactor_perp[n][g][l] += (Pperp_array[i][l] ) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th * R_array[0],dx_array[i],dxsum, R_array[i]) / Area0) * (dx_array[0] / dxsum) / counter; //cant do this here as we use +=, dividing by counter^i -> wrong
+                              dfactor_para[n][g][l] += (Ppara_array[i][l] ) * dfreqs_pol[l] * dx_array[i] / (M_PI*pow(R_array[i],2)*C) * (circle_area(2*theta_r[n]/th * R_array[0],dx_array[i],dxsum, R_array[i]) / Area0) * (dx_array[0] / dxsum) / counter;
+                          }
+                      }
                     }
-                    for (g=0; g<n_blocks; g++) {
-                        if (dxsum > ((2 * dist / th) - th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i])  && dxsum <= ((2 * dist / th) + th/(4*(n_rings + 0.5))) * R_array[i] + 2*theta_r[n]/th * (R_array[0] - R_array[i]))  {
-                            dfactor_perp[n][g][l] /= counter;
-                            dfactor_para[n][g][l] /= counter;
-                        }
-                    }
-                    for (g=0; g<n_blocks; g++) {
-                        dfactor_perptest[n][l] += dfactor_perp[n][g][l];
-                    }
-
                     // have to check uradARRAY[] = sum (dfactor over second index)
                     // dfactor array should be all that is needed, dfactor[g][h][l] will take over role of urad_array_perp[l]
                 }
 
+		//for (g=0; g<n_blocks; g++) {
+                //        dfactor_perptest[n][l] += dfactor_perp[n][g][l];
+                //}
             }
-            printf("urad perp1: %.5e\n", urad_array_perp[1][l]);
-            printf("dfactor_perp1: %.5e\n", dfactor_perptest[1][l]);
-            printf("urad perp0: %.5e\n", urad_array_perp[0][l]);
-            printf("dfactor_perp0: %.5e\n", dfactor_perptest[0][l]);
-
         }
+
+        //fprintf(energydensity, "%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", urad_array_perp[0][5],urad_array_perp[0][20],urad_array_perp[1][40],urad_array_perp[1][5],urad_array_perp[1][20],urad_array_perp[1][40],dfactor_perp[0][0][5]/urad_array_perp[0][5], dfactor_perp[1][1][5]/urad_array_perp[1][5], urad_array_perpTEST[5], urad_array_perpTEST[20], urad_array_perpTEST[40]);
+      //  printf("urad perp2: %.5e\n", urad_array_perp[2][0]);
+      //  printf("dfactor_perp2: %.5e\n", dfactor_perptest[2][0]);
+      //  printf("dfactor_perp22: %.5e\n", dfactor_perp[2][2][0]);
+      //  printf("dfactor_perp20: %.5e\n", dfactor_perp[2][0][0]);
+      //  printf("dfactor_perp21: %.5e\n", dfactor_perp[2][1][0]);
+      //  printf("dfactor_perp23: %.5e\n", dfactor_perp[2][3][0]);
+      //  printf("dfactor_perp24: %.5e\n", dfactor_perp[2][4][0]);
+      //  printf("dfactor_perp25: %.5e\n", dfactor_perp[2][5][0]);
+      //  printf("dfactor_perp26: %.5e\n", dfactor_perp[2][6][0]);
+
+      //  printf("urad perp1: %.5e\n", urad_array_perp[1][0]);
+      //  printf("dfactor_perp1: %.5e\n", dfactor_perptest[1][0]);
+      //  printf("urad perp0: %.5e\n", urad_array_perp[0][0]);
+      //  printf("dfactor_perp0: %.5e\n", dfactor_perptest[0][0]);
+      //  printf("dfactor_perp00: %.5e\n", dfactor_perp[0][0][0]);
+
 //            P_perpcum[l] += P_perp[l] * dx + P_perpIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;//rolling average of power, IC adjusted to correct sync bins
 //            P_paracum[l] += P_para[l] * dx + P_paraIC[findClosest(f_pol_IC, f_pol[l], array_size)] * dx;
 //            if (x <= R0) {
@@ -865,9 +915,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //        for (g=1; g<21; g++){//testing 'smart binning' method for IC
 //            ICrange[g] = g+3;
 //        }
-
+//
         for (g=0; g<n_blocks; g++){ //B-field blocks
-            for (h=g; h<g+1; h++){
+            for (h=0; h<n_blocks; h++){
                 Btheta = acos(B_effectives[h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
                 zeta = atan(B_effectives[h][g][1]/B_effectives[h][g][0]); //to rotate each Stokes to lab frame
                 //printf("Btheta [deg] \t%.5e", Btheta*180/M_PI);
@@ -878,36 +928,51 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     //rotate to B_effective
 //                    dfactor = 1; //adjust so total IC power always the same
 
-                } else {
+                } else if (h!=g && dfactor_perp[g][h][0] != 0) {
 //                    zone_d = sqrt(pow(align[h][g][0],2) + pow(align[h][g][1],2) + pow(align[h][g][2],2));
                     //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
                     //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
-                    cosk_single = unitalign[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single = atan2(unitalign[h][g][0]*sin(-zeta) + unitalign[h][g][1]*cos(-zeta), unitalign[h][g][0]*cos(-zeta) - unitalign[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
-
+                    cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
+                    cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
+                    cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
+                    cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
+                    cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
                     //psi = - atan(BY[g]/BX[g]); //also have to rotate align by RPAR angle
                     //Blength = sqrt(BX[g]*BX[g]+BY[g]*BY[g]+BZ[g]*BZ[g]);
                     //printf("zone_d,B.align %.5e\t%.5e\t%.5e\n", zone_d,(BX[g]*align[h][g][0]+BY[g]*align[h][g][1]+BZ[g]*align[h][g][2])/(Blength*zone_d),(B_effectives[h][g][0]*unitalign[h][g][0]+B_effectives[h][g][1]*unitalign[h][g][1]+B_effectives[h][g][2]*unitalign[h][g][2]));
                     //cosk_single = align[h][g][2]/zone_d;
                     //phik_single = atan2(align[h][g][0]*sin(psi) + align[h][g][1]*cos(psi), align[h][g][0]*cos(psi) - align[h][g][1]*sin(psi)); //this is between -pi and pi, but phik between 0 and 2pi
 
-
-                    cosk_start = findClosest(cosk, cosk_single, 10), cosk_end = cosk_start + 1; //probs make this 4,5, instead of just 5
-                    phik_start = findClosest(phik, phik_single, 10), phik_end = phik_start + 1;
-                    printf("coskphik %.5e\t%d\t%.5e\t%d\n",cosk_single,cosk_start,phik_single,phik_start);
+		    for (n=0; n<5; n++){
+                        cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
+                        phik_list[n] = findClosest(phik, phik_single[n], 10);
+                        printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
+                    }
+                    cosk_start = 0, cosk_end = 5;
+                    phik_start = 0, phik_end = 1;
                     //zone_d += 1;
 //                    dfactor = 100 /(zone_d + 1); //* asin(1/(2*zone_d))/M_PI; //this gives the 1/r dependence
                     //printf("zoned %.5e\n", zone_d);
                     //rotate to g's B_effective, but the B_effective given by the DOppler factor for that zone
 
+                } else {
+                  continue;
                 }
 
-                for (nn=0; nn<array_size; nn++){  //f_polIC (compton energy)
-                    //n = ICrange[nn];
-                    n = nn;
+                for (n=0; n<array_size; n++){  //f_polIC (compton energy)
                     for (l=0; l<array_size; l++){ //f_pol (sync energy)
                         for (p=phik_start; p<phik_end; p++){ //phi
                             for (m=cosk_start; m<cosk_end; m++){ //cosk
+                                nn = m;
+                                if (h != g) {
+                                   p = phik_list[nn];
+                                   m = cosk_list[nn];
+                                }
                                 F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
 //                                X = sqrt(f_pol_IC[n]/(2*f_pol[l]))*f_pol[l]*4.14E-15/Me_EV;
                                 v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
@@ -1055,6 +1120,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //                                    sig1 = 0.0;
 //                                    sig2 = 0.0;
                                 }
+                                if (h != g) {
+                                   m = nn;
+                                }
                             }
                         }
                     }
@@ -1076,7 +1144,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         for (i=0; i<array_size; i++){
             for (n=0; n<n_blocks; n++)
-            u_rad += (urad_array_perp[n][i]+urad_array_para[n][i]);
+                u_rad += (urad_array_perp[n][i]+urad_array_para[n][i]);
             //printf("Ps_permtest %.5e\n", Ps_per_m_test[i]);
             //printf("u_rad %.5e\n", u_rad);
         }
@@ -1305,8 +1373,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* n_blocks * array_size * 3);
         memset(urad_array_perp, 0, sizeof(urad_array_perp[0][0])* n_blocks * array_size); //reset these to 0 for next section
         memset(urad_array_para, 0, sizeof(urad_array_para[0][0])* n_blocks * array_size);
+        //memset(urad_array_perpTEST, 0, sizeof(urad_array_perpTEST[0])* array_size);
         memset(dfactor_perp, 0, sizeof(dfactor_perp[0][0][0])* n_blocks * n_blocks * array_size); //reset these to 0 for next section
         memset(dfactor_para, 0, sizeof(dfactor_para[0][0][0])* n_blocks * n_blocks * array_size);
+        //memset(dfactor_perptest, 0, sizeof(dfactor_perptest[0][0]) * n_blocks * array_size); //reset these to 0 for next section
 
 
 
@@ -1333,10 +1403,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //
 //        }
 
-        if (nSteps == 3) {
+        if (nSteps == 100) {
             break;
         }
-        //break;
+        break;
 
     }
 
@@ -1347,9 +1417,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //    //printf("x,o,r %d\t%d\t%d\n",n_xray,n_opt,n_radio);
 
     free(R_array);
-    free(dx_array);
-    free_dmatrix(Pperp_array,0,buffer_size,0,array_size);
-    free_dmatrix(Ppara_array,0,buffer_size,0,array_size);
+    free(dx_array); //free all dynamically allocated memory
+    for (i=0; i<buffer_size; i++) {
+	free(Pperp_array[i]);
+        free(Ppara_array[i]);
+    }
+    free(Pperp_array);
+    free(Ppara_array);
 
     double newbins[array_size]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
     for (n=0; n<array_size; n++){
