@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include "jet_fns.h"
 
@@ -1161,3 +1162,20 @@ double Sigma_2(double E_elecs,double F_min, double dN_dE, double dEe ) {
   /* Sigma1 energy integral */
   return (dN_dE*dEe*1.6E-19*pow(pow(E_elecs*1.6E-19,2) - F_min*F_min,2)/(pow(E_elecs*1.6E-19,6)*F_min));
   }
+
+
+/* Prepends t into s. Assumes s has enough space allocated
+ * ** for the combined string.
+ * */
+void prepend(char* s, const char* t)
+{
+    size_t len = strlen(t);
+    size_t i;
+
+    memmove(s + len, s, strlen(s) + 1);
+
+    for (i = 0; i < len; ++i)
+    {
+        s[i] = t[i];
+    }
+}

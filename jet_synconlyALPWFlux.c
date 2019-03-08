@@ -79,23 +79,28 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     char thread_idst[10];
     char task_idst[10];
+    char results_dir[15];
     sscanf(argv[2], "%s", thread_idst);
     sscanf(argv[7], "%s", task_idst);
+    sscanf(argv[9], "%s", results_dir);
     strcat(task_idst,"_");
     strcat(task_idst,thread_idst);
     strcat(task_idst,".txt");			
 		
-    char frange[30] = "results/freqrange";
+    char frange[40] = "/freqrange";
     strcat(frange,task_idst);
-    char bdata[30] = "results/basicdata";
+    prepend(frange, results_dir);
+    char bdata[40] = "/basicdata";
     strcat(bdata,task_idst);
-    char kparams[30] = "results/keyparams";
+    prepend(bdata, results_dir);
+    char kparams[40] = "/keyparams";
     strcat(kparams,task_idst);
+    prepend(kparams, results_dir);
     //char Edensity[30] = "results/energydensity";
     //strcat(Edensity,task_idst);
-    char testfil[30] = "results/TESTFIL";
+    char testfil[40] = "/TESTFIL";
     strcat(testfil,task_idst);
-		
+    prepend(testfil, results_dir);		
     //define some files to store output data
     FILE *freqrange, *basicdata, *keyparams, *energydensity ,*TESTFIL2;
 
@@ -217,6 +222,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(dfactor_perptest, 0.0, n_blocks*array_size*sizeof(dfactor_perptest[0][0]));
     double dfactor_temp_perp = 0;
     double dfactor_temp_para = 0;
+    double ang_factor; //reduction in power from small solid angle of zone already accounted for by dx/dxsum in dfactor__, this term remedies
 
     int buffer_subset[n_blocks]; //different blocks have different buffer_sizes depending on their position in jet cross section
     for (i=0; i<n_blocks; i++){ //cant allocate non zero with memset
@@ -540,6 +546,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //B_effectives due to RPAR for each zone in every other zone
     double B_effectives[n_blocks][n_blocks][3];
     memset(B_effectives, 0, sizeof(B_effectives[0][0][0])* n_blocks * n_blocks * 3);
+    
+    int breakstep;
+    sscanf(argv[8], "%d", &breakstep);
 
     printf("Beginning jet analysis... \n");
     while (x<L_jet)//for (x=0; x<L_jet; x+=dx)
@@ -703,9 +712,19 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         }
 
-
-
+        //******************************************************************************************************//
+        //Light travel angular effect + gamma bulk effect: causes section mixing
+        //currently assuming that as soon as this occurs, all emission is subsequently unpolarized (strong assumption, much smoother in reality)
+        if (R*tan(deg2rad(theta_obs)) > R0 * 2 * th/(2*(n_rings+0.5)) || x > (R0 * 2 * th/(2*(n_rings+0.5))) / (1 - beta_bulk) ){
+           for (l=0; l<array_size; l++) {
+               P_perp[l] = (P_perp[l] + P_para[l]) / 2;
+               P_para[l] = P_perp[l];
+           }
+           printf("\n WARNING: Section Mixing! Emission from this point onward will be unpolarized.\n");
+        }
+        /***************************************************************************************************/
         //some code to estimate what dx early for energy density calcultion, based off sync losses only, ok if IC losses not too big, early jet
+
         dx_set = findminelementNO0(Ne_e, array_size);//gets the lowest non_zero element. Higher energy electrons radiate more rapidly
 
         dx_R = 0.05*(R0+x*tan(deg2rad(theta_open_p)))/tan(deg2rad(theta_open_p)); //ensures Rnew <= 1.05 Rold
@@ -916,7 +935,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //            ICrange[g] = g+3;
 //        }
 //
-        for (g=0; g<n_blocks; g++){ //B-field blocks
+        for (g=0; g<n_blocks; g++){ //B-field blocksi
             for (h=0; h<n_blocks; h++){
                 Btheta = acos(B_effectives[h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
                 zeta = atan(B_effectives[h][g][1]/B_effectives[h][g][0]); //to rotate each Stokes to lab frame
@@ -926,7 +945,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //                    zone_d = 1;
                     phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
                     //rotate to B_effective
-//                    dfactor = 1; //adjust so total IC power always the same
+                    ang_factor = 1; //adjust so total IC power always the same
 
                 } else if (h!=g && dfactor_perp[g][h][0] != 0) {
 //                    zone_d = sqrt(pow(align[h][g][0],2) + pow(align[h][g][1],2) + pow(align[h][g][2],2));
@@ -955,6 +974,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     }
                     cosk_start = 0, cosk_end = 5;
                     phik_start = 0, phik_end = 1;
+                    ang_factor = 20; //ie 20*5 = 100 = size(phik) * size(cosk)
                     //zone_d += 1;
 //                    dfactor = 100 /(zone_d + 1); //* asin(1/(2*zone_d))/M_PI; //this gives the 1/r dependence
                     //printf("zoned %.5e\n", zone_d);
@@ -1022,14 +1042,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         //3.95417e-103
                                         //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
-                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik //* dfactor //this is Power(freq), multiply by freq later to get nuF(nu)
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
                                         * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
                                         //printf("Pperpperp %.5e\n", Pperpperp);
                                         IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
 
-                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -1037,7 +1057,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                         IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
                                         //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
 
-                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -1046,7 +1066,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         //printf("Pparaperp1 %.5e\n", Pparaperp);
 
-                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -1074,14 +1094,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //                                        Pparaperp = 0.0;
 //                                        Pparapara = 0.0;
 
-                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
                                         //printf("Pperpperp1 %.5e\n", Pperpperp);
                                         IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
 
-                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -1089,7 +1109,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                         IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
                                         //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
 
-                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -1098,7 +1118,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         //printf("Pparaperp1 %.5e\n", Pparaperp);
 
-                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * dfactor
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[g][h][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
                                         * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
                                         + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
                                         *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
@@ -1381,11 +1401,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
         nSteps+=1; //allows the number of jet sections to be determined
-        printf("nStep, dx, x, B, R %.5d\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R);
+        printf("nStep, dx, x, B, R %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
 
 
         //save data needed at every jet section to solve line of sight opacity
-        fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R);
+        fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
 
 
 //        for (n=0; n<array_size; n++){
@@ -1403,10 +1423,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //
 //        }
 
-        if (nSteps == 100) {
+        if (nSteps == breakstep) {
             break;
         }
-        break;
+        //break;
 
     }
 
