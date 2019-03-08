@@ -9,8 +9,12 @@ import time
 import sys
 import os
 task_id = sys.argv[1]
+n_blocks = sys.argv[2]
+n_rings = sys.argv[3]
+nsteps = sys.argv[4]
+n_workers = sys.argv[5]
 
-results_dir = "results"
+results_dir = "nbloc" + n_blocks + "_" + nsteps
 try:
     # Create results Directory
     os.mkdir(results_dir)
@@ -21,7 +25,7 @@ except FileExistsError:
 subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','nrutil.c','nrutil.h','-lm'])
 
 q = multiprocessing.Queue()
-inputs = [(0,i,1,1.5,7,1,task_id) for i in range(1)] #these are saved in keyparams along with more
+inputs = [(0,i,1,1.5, n_blocks, n_rings, task_id, nsteps, results_dir) for i in range(int(n_workers))] #these are saved in keyparams along with more
 
 for inpt in inputs:
   q.put(inpt)
@@ -33,11 +37,11 @@ def worker():
       return
     print("task_id: ",task_id," thread_id: " ,inpt[1])
     #time.sleep(0.1)
-    p = subprocess.check_call(['./a.out',str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6])])
+    p = subprocess.check_call(['./a.out',str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6]),str(inpt[7]),str(inpt[8])])
     #checksum = collect_md5_result_for(fileName)
     #result[fileName] = checksum  # store it
 
-threads = [multiprocessing.Process(target=worker) for _i in range(1) ]
+threads = [multiprocessing.Process(target=worker) for _i in range(int(n_workers)) ]
 for thread in threads:
   #time.sleep(0.3) #make sure C program gets different random seed
   thread.start()
@@ -47,15 +51,15 @@ for thread in threads: #wait for all workers to finish
   thread.join()
 
 #then run this once all workers have finished
-subprocess.check_call('cat results/TESTFIL' + str(task_id) + '_* > results/TESTFIL' + str(task_id) + '.txt', shell=True) #combine all the output files in order of inputs
-subprocess.check_call('cat results/basicdata' + str(task_id) + '_* > results/basicdata'+ str(task_id) +'.txt',shell=True)
-subprocess.check_call('cat results/freqrange' + str(task_id) + '_* > results/freqrange'+ str(task_id) +'.txt',shell=True)
-subprocess.check_call('cat results/keyparams' + str(task_id) + '_* > results/keyparams'+ str(task_id) +'.txt',shell=True)
+subprocess.check_call('cat ' + results_dir + '/TESTFIL' + str(task_id) + '_* > ' + results_dir + '/TESTFIL' + str(task_id) + '.txt', shell=True) #combine all the output files in order of inputs
+subprocess.check_call('cat ' + results_dir + '/basicdata' + str(task_id) + '_* > ' + results_dir + '/basicdata'+ str(task_id) +'.txt',shell=True)
+subprocess.check_call('cat ' + results_dir + '/freqrange' + str(task_id) + '_* > ' + results_dir + '/freqrange'+ str(task_id) +'.txt',shell=True)
+subprocess.check_call('cat ' + results_dir + '/keyparams' + str(task_id) + '_* > ' + results_dir + '/keyparams'+ str(task_id) +'.txt',shell=True)
 
-subprocess.check_call('rm results/TESTFIL' + str(task_id) + '_*',shell=True) #delete files after concat
-subprocess.check_call('rm results/basicdata' + str(task_id) + '_*',shell=True)
-subprocess.check_call('rm results/freqrange' + str(task_id) + '_*',shell=True)
-subprocess.check_call('rm results/keyparams' + str(task_id) + '_*',shell=True)
+subprocess.check_call('rm ' + results_dir + '/TESTFIL' + str(task_id) + '_*',shell=True) #delete files after concat
+subprocess.check_call('rm ' + results_dir + '/basicdata' + str(task_id) + '_*',shell=True)
+subprocess.check_call('rm ' + results_dir + '/freqrange' + str(task_id) + '_*',shell=True)
+subprocess.check_call('rm ' + results_dir + '/keyparams' + str(task_id) + '_*',shell=True)
 
 
 

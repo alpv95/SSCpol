@@ -76,6 +76,9 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
     fq_maxs_IC = frdata[:array_size,5]
     fq_mids_IC = frdata[:array_size,6]
 
+    print("fq_mids",freqtoeV(fq_mids))
+    print("fq_midsIC",freqtoeV(fq_mids_IC))
+
     fig = plt.figure(2)
     # set height ratios for sublots
     gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 2])
@@ -89,7 +92,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
                   gamma_bulk, n_blocks))
     ax0.set_xscale("log")
     ax0.set_xlim([1E-5, 1E17])
-    ax0.set_ylim([0, 0.7])
+    ax0.set_ylim([0, 1.0])
     ax0.set_ylabel(r'$\Pi(\omega)$', size='13')
     ax05 = plt.subplot(gs[1], sharex=ax0)
     ax05.set_xlim([1E-5, 1E17])
@@ -98,7 +101,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
     ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='13')
     ax1 = plt.subplot(gs[2], sharex=ax0)
     ax1.set_yscale('log')
-    ax1.set_ylim([1E-18, 9.99E-11])
+    ax1.set_ylim([1E-17, 9.99E-11])
     ax1.set_xlim([1E-5, 1E17])
     ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='13')
     ax1.set_xlabel(r'$\nu$ [eV]', size='13')
@@ -194,9 +197,9 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
 
         #savgol filter to smooth bumpy ICS from rebinning larger IC bins in synchrotron ones.
         #np.savetxt("singleSED.txt", np.array([freqtoeV(fq_mids),P_detected]))
-        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0], linestyle='-.',color=(j/17,0.2,0.2), label='IC')#Inverse Compton
+        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0],linestyle='-.', color=(j/17,0.2,0.2), label='IC')#Inverse Compton
         line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
-        line4 = ax1.plot(freqtoeV(fq_mids), P_detected, '-', color=(0.1,j/17,1), label='synchrotron') #synchrotron
+        line4 = ax1.plot(freqtoeV(fq_mids), P_detected,'-', color=(0.1,j/17,1), label='synchrotron') #synchrotron
         line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
         line004 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')
         #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron

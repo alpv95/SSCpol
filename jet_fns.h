@@ -104,7 +104,7 @@ double Z_parapara(double cosk, double phik, double Btheta);
 double Z_e(double *_e, double *e, double *k, int perp);
 double Sigma_1(double E_elecs,double F_min, double dN_dE, double dEe );
 double Sigma_2(double E_elecs,double F_min, double dN_dE, double dEe );
-
+void prepend(char* s, const char* t);
 
 #endif
 
