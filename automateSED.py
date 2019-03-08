@@ -21,7 +21,7 @@ except FileExistsError:
 subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','nrutil.c','nrutil.h','-lm'])
 
 q = multiprocessing.Queue()
-inputs = [(0,i,1,1.5,7,1,task_id) for i in range(10)] #these are saved in keyparams along with more
+inputs = [(0,i,1,1.5,7,1,task_id) for i in range(1)] #these are saved in keyparams along with more
 
 for inpt in inputs:
   q.put(inpt)
@@ -37,7 +37,7 @@ def worker():
     #checksum = collect_md5_result_for(fileName)
     #result[fileName] = checksum  # store it
 
-threads = [multiprocessing.Process(target=worker) for _i in range(10) ]
+threads = [multiprocessing.Process(target=worker) for _i in range(1) ]
 for thread in threads:
   #time.sleep(0.3) #make sure C program gets different random seed
   thread.start()
