@@ -4,7 +4,6 @@
 #include <string.h>
 #include "jet_fns.h"
 #include "mtwister.h"
-#include "nrutil.h"
 #include <time.h>
 
 
@@ -134,6 +133,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double beta_bulk = lortovel(gamma_bulk);
     double doppler_factor = doppler(beta_bulk, deg2rad(theta_obs));
     int intermed_param = 0; //allows intermediate population to be determined to compare to paper
+    clock_t time_end, time_begin; //to gauge timing for cluster
+    double time_spent; //time spent on a single section calculation
 
     //define some parameters for determining the dx of each jet section
     double dx_R; //dx where R_new = 1.05*R_old
@@ -374,7 +375,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     sscanf(argv[2], "%d", &thread_id);
     sscanf(argv[7], "%d", &task_id);
     MTRand seedr = seedRand((unsigned)time(NULL)+(unsigned)(task_id + thread_id)); //random seed supplemented by task and thread id
-    //MTRand seedr = seedRand(5); //fix random seed
+    //MTRand seedr = seedRand(11); //fix random seed
     double B_0[n_blocks];
     double B_1[n_blocks];
     double B_2[n_blocks];
@@ -553,6 +554,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     printf("Beginning jet analysis... \n");
     while (x<L_jet)//for (x=0; x<L_jet; x+=dx)
     {
+        time_begin = clock();
         //update jet parameters
         eps = epsilon(B);//same for all populations
 	    //printf("x, R, B; %.5e\t%.5e\t%.5e\n", x, R, B); //matches
@@ -716,11 +718,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         //Light travel angular effect + gamma bulk effect: causes section mixing
         //currently assuming that as soon as this occurs, all emission is subsequently unpolarized (strong assumption, much smoother in reality)
         if (R*tan(deg2rad(theta_obs)) > R0 * 2 * th/(2*(n_rings+0.5)) || x > (R0 * 2 * th/(2*(n_rings+0.5))) / (1 - beta_bulk) ){
-           for (l=0; l<array_size; l++) {
-               P_perp[l] = (P_perp[l] + P_para[l]) / 2;
-               P_para[l] = P_perp[l];
-           }
-           printf("\n WARNING: Section Mixing! Emission from this point onward will be unpolarized.\n");
+//           for (l=0; l<array_size; l++) {
+//               P_perp[l] = (P_perp[l] + P_para[l]) / 2;
+//               P_para[l] = P_perp[l];
+//           }
+//           printf("\n WARNING: Section Mixing! Emission from this point onward will be unpolarized.\n");
+           printf("\n WARNING: Section Mixing! This is where it would occur if activated.\n");
         }
         /***************************************************************************************************/
         //some code to estimate what dx early for energy density calcultion, based off sync losses only, ok if IC losses not too big, early jet
@@ -970,7 +973,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 		    for (n=0; n<5; n++){
                         cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
                         phik_list[n] = findClosest(phik, phik_single[n], 10);
-                        printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
+                        //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
                     }
                     cosk_start = 0, cosk_end = 5;
                     phik_start = 0, phik_end = 1;
@@ -1026,7 +1029,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                 if (F_min*(Me_EV) > E_elecs[array_size-1]) {
                                     P_perpIC[n] += 0.0;
                                     P_paraIC[n] += 0.0;
-                                    continue;
                                 }
                                 else if (F_min*(Me_EV) > E_elecs[0]) {
                                     for (o=0; o<array_size; o++){ //find Fmin location in E_elecs
@@ -1406,7 +1408,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         //save data needed at every jet section to solve line of sight opacity
         fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
-
+             //should print neighbouring B_effectives and dfactor_perp to make sure everything is ok
 
 //        for (n=0; n<array_size; n++){
 //            IC_Pi[n] = sqrt(IC_StokesTotal[n][1]*IC_StokesTotal[n][1] + IC_StokesTotal[n][2]*IC_StokesTotal[n][2]) / IC_StokesTotal[n][0];
@@ -1422,6 +1424,17 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //                   S_P[n],IC_Pi[n],IC_PA[n],IC_P[n]);
 //
 //        }
+
+
+        /************************************/
+        //Timing: to understand accurate cluster submission
+        time_end = clock();
+        time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
+        printf("Time spent this section: %.3f mins \n", time_spent/60);
+        /************************************/
+
+
+
 
         if (nSteps == breakstep) {
             break;
