@@ -76,9 +76,6 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
     fq_maxs_IC = frdata[:array_size,5]
     fq_mids_IC = frdata[:array_size,6]
 
-    print("fq_mids",freqtoeV(fq_mids))
-    print("fq_midsIC",freqtoeV(fq_mids_IC))
-
     fig = plt.figure(2)
     # set height ratios for sublots
     gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 2])

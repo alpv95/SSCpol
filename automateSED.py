@@ -22,7 +22,7 @@ try:
 except FileExistsError:
     print("Directory ", results_dir,  " already exists")
 
-subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','nrutil.c','nrutil.h','-lm'])
+subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm'])
 
 q = multiprocessing.Queue()
 inputs = [(0,i,1,1.5, n_blocks, n_rings, task_id, nsteps, results_dir) for i in range(int(n_workers))] #these are saved in keyparams along with more
@@ -37,7 +37,7 @@ def worker():
       return
     print("task_id: ",task_id," thread_id: " ,inpt[1])
     #time.sleep(0.1)
-    p = subprocess.check_call(['./a.out',str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6]),str(inpt[7]),str(inpt[8])])
+    p = subprocess.check_call(['srun','--ntasks=1','--output=' + results_dir + '/task' + task_id + '_' + str(inpt[1]) + '.out','./a.out', str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6]),str(inpt[7]),str(inpt[8])])
     #checksum = collect_md5_result_for(fileName)
     #result[fileName] = checksum  # store it
 
