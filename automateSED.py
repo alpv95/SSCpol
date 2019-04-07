@@ -4,7 +4,6 @@
 '''use task_id + thread id to seed random numbers'''
 import multiprocessing
 import subprocess
-import sys
 import time
 import sys
 import os

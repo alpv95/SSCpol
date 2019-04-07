@@ -16,6 +16,10 @@ def Norm_factor(alpha,flux,Erange=(2,10)): #Erange must be a tuple (keV) eg, (2,
     A = flux * (alpha-1) / (Erange[0]**(1-alpha) - Erange[1]**(1-alpha))
     return A / (1.6E-16 * 1E7) #convert to counts norm
 
+def Dfactor(theta, gamma): #doppler factor
+    beta = np.sqrt(1 - 1/gamma**2)
+    return 1 / (gamma * (1 - beta * np.cos(np.deg2rad(theta))))
+
 def Theta_lab(theta_op_jet, gamma): #theta_opening in lab frame
     return np.rad2deg(np.arctan(np.tan(np.deg2rad(theta_op_jet))/gamma))
 
