@@ -472,6 +472,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double unitalign2[n_blocks][n_blocks][3];
     double unitalign3[n_blocks][n_blocks][3];
     double unitalign4[n_blocks][n_blocks][3];
+    double unitalign5[n_blocks][n_blocks][3];
+    double unitalign6[n_blocks][n_blocks][3];
     for (i=0; i<n_blocks; i++){
         for (m=0; m<n_blocks; m++){
             align[i][m][0] = theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]);//cos(deg2rad(theta_obs))*(theta_r[i]*cos(theta_phi[i]) - theta_r[m]*cos(theta_phi[m]));
@@ -517,10 +519,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double zeta;
     double psi;
     int phik_start, phik_end, cosk_start, cosk_end;
-    double cosk_single[5];
-    double phik_single[5];
-    int cosk_list[5];
-    int phik_list[5];
+    double cosk_single[7];
+    double phik_single[7];
+    int cosk_list[7];
+    int phik_list[7];
     double u_rad = 0.0;
     double Blength; //for normalization
     double logdif;
@@ -677,25 +679,35 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
                                 gamma_bulk,unitalign0[l][i]);
 
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(20*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)), //adding cosk offsets
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(18.2*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)), //adding cosk offsets
                                 cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
                                 gamma_bulk,unitalign1[l][i]);
                    
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(40*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(36.4*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
                                 cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
                                 gamma_bulk,unitalign2[l][i]);
 
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-20*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-18.2*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
                                 cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
                                 gamma_bulk,unitalign3[l][i]);
                     
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-40*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-36.4*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
                                 cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
                                 sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
                                 gamma_bulk,unitalign4[l][i]);
+
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-60*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,unitalign5[l][i]);
+                  
+                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(60*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,unitalign6[l][i]);
                 }
             }
         }
@@ -980,228 +992,233 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 //        }
 //
 
-//        for (g=0; g<n_blocks; g++){ //B-fields
-//            for (h=0; h<n_blocks; h++){ //block locations
-//                Btheta = acos(B_effectives[h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
-//                zeta = atan(B_effectives[h][g][1]/B_effectives[h][g][0]); //to rotate each Stokes to lab frame
-//                //printf("Btheta [deg] \t%.5e", Btheta*180/M_PI);
-//
-//                if (h==g){
-////                    zone_d = 1;
-//                    phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
-//                    //rotate to B_effective
-//                    ang_factor = 1; //adjust so total IC power always the same
-//
-//                } else if (h!=g && dfactor_perp[g][h][0] != 0) {
-////                    zone_d = sqrt(pow(align[h][g][0],2) + pow(align[h][g][1],2) + pow(align[h][g][2],2));
-//                    //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
-//                    //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
-//                    cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
-//                    phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
-//                    cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
-//                    phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
-//                    cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
-//                    phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
-//                    cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
-//                    phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
-//                    cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
-//                    phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
-//                    //psi = - atan(BY[g]/BX[g]); //also have to rotate align by RPAR angle
-//                    //Blength = sqrt(BX[g]*BX[g]+BY[g]*BY[g]+BZ[g]*BZ[g]);
-//                    //printf("zone_d,B.align %.5e\t%.5e\t%.5e\n", zone_d,(BX[g]*align[h][g][0]+BY[g]*align[h][g][1]+BZ[g]*align[h][g][2])/(Blength*zone_d),(B_effectives[h][g][0]*unitalign[h][g][0]+B_effectives[h][g][1]*unitalign[h][g][1]+B_effectives[h][g][2]*unitalign[h][g][2]));
-//                    //cosk_single = align[h][g][2]/zone_d;
-//                    //phik_single = atan2(align[h][g][0]*sin(psi) + align[h][g][1]*cos(psi), align[h][g][0]*cos(psi) - align[h][g][1]*sin(psi)); //this is between -pi and pi, but phik between 0 and 2pi
-//
-//		    for (n=0; n<5; n++){
-//                        cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
-//                        phik_list[n] = findClosest(phik, phik_single[n], 10);
-//                        //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
-//                    }
-//                    cosk_start = 0, cosk_end = 5;
-//                    phik_start = 0, phik_end = 1;
-//                    ang_factor = 20; //ie 20*5 = 100 = size(phik) * size(cosk)
-//                    //zone_d += 1;
-////                    dfactor = 100 /(zone_d + 1); //* asin(1/(2*zone_d))/M_PI; //this gives the 1/r dependence
-//                    //printf("zoned %.5e\n", zone_d);
-//                    //rotate to g's B_effective, but the B_effective given by the DOppler factor for that zone
-//
-//                } else {
-//                  continue;
-//                }
-//
-//                for (n=0; n<array_size; n++){  //f_polIC (compton energy)
-//                    for (l=0; l<array_size; l++){ //f_pol (sync energy)
-//                        for (p=phik_start; p<phik_end; p++){ //phi
-//                            for (m=cosk_start; m<cosk_end; m++){ //cosk
-//                                nn = m;
-//                                if (h != g) {
-//                                   p = phik_list[nn];
-//                                   m = cosk_list[nn];
+        for (g=0; g<n_blocks; g++){ //B-fields
+            for (h=0; h<n_blocks; h++){ //block locations
+                Btheta = acos(B_effectives[h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
+                zeta = atan(B_effectives[h][g][1]/B_effectives[h][g][0]); //to rotate each Stokes to lab frame
+                //printf("Btheta [deg] \t%.5e", Btheta*180/M_PI);
+
+                if (h==g){
+//                    zone_d = 1;
+                    phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
+                    //rotate to B_effective
+                    ang_factor = 1; //adjust so total IC power always the same
+
+                } else if (h!=g && dfactor_perp[h][g][0] != 0) {
+//                    zone_d = sqrt(pow(align[h][g][0],2) + pow(align[h][g][1],2) + pow(align[h][g][2],2));
+                    //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
+                    //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
+                    cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
+                    cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
+                    cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
+                    cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
+                    cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
+                    cosk_single[5] = unitalign5[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[5] = atan2(unitalign5[h][g][0]*sin(-zeta) + unitalign5[h][g][1]*cos(-zeta), unitalign5[h][g][0]*cos(-zeta) - unitalign5[h][g][1]*sin(-zeta));
+                    cosk_single[6] = unitalign6[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[6] = atan2(unitalign6[h][g][0]*sin(-zeta) + unitalign6[h][g][1]*cos(-zeta), unitalign6[h][g][0]*cos(-zeta) - unitalign6[h][g][1]*sin(-zeta));
+
+                    //psi = - atan(BY[g]/BX[g]); //also have to rotate align by RPAR angle
+                    //Blength = sqrt(BX[g]*BX[g]+BY[g]*BY[g]+BZ[g]*BZ[g]);
+                    //printf("zone_d,B.align %.5e\t%.5e\t%.5e\n", zone_d,(BX[g]*align[h][g][0]+BY[g]*align[h][g][1]+BZ[g]*align[h][g][2])/(Blength*zone_d),(B_effectives[h][g][0]*unitalign[h][g][0]+B_effectives[h][g][1]*unitalign[h][g][1]+B_effectives[h][g][2]*unitalign[h][g][2]));
+                    //cosk_single = align[h][g][2]/zone_d;
+                    //phik_single = atan2(align[h][g][0]*sin(psi) + align[h][g][1]*cos(psi), align[h][g][0]*cos(psi) - align[h][g][1]*sin(psi)); //this is between -pi and pi, but phik between 0 and 2pi
+
+		    for (n=0; n<7; n++){
+                        cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
+                        phik_list[n] = findClosest(phik, phik_single[n], 10);
+                        //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
+                    }
+                    cosk_start = 0, cosk_end = 7;
+                    phik_start = 0, phik_end = 1;
+                    ang_factor = 14.3; //ie 20*5 = 100 = size(phik) * size(cosk)
+                    //zone_d += 1;
+//                    dfactor = 100 /(zone_d + 1); //* asin(1/(2*zone_d))/M_PI; //this gives the 1/r dependence
+                    //printf("zoned %.5e\n", zone_d);
+                    //rotate to g's B_effective, but the B_effective given by the DOppler factor for that zone
+
+                } else {
+                  continue;
+                }
+
+                for (n=0; n<array_size; n++){  //f_polIC (compton energy)
+                    for (l=0; l<array_size; l++){ //f_pol (sync energy)
+                        for (p=phik_start; p<phik_end; p++){ //phi
+                            for (m=cosk_start; m<cosk_end; m++){ //cosk
+                                nn = m;
+                                if (h != g) {
+                                   p = phik_list[nn];
+                                   m = cosk_list[nn];
+                                }
+                                F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
+//                                X = sqrt(f_pol_IC[n]/(2*f_pol[l]))*f_pol[l]*4.14E-15/Me_EV;
+                                v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
+                                e_k[0] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta);
+                                e_k[1] = sin(Btheta)*cosk[m] - cos(Btheta)*sqrt(1-cosk[m]*cosk[m])*cos(phik[p]); //incoming photon polarization vector (perp)
+                                e_k[2] = -sin(Btheta)*sqrt(1-cosk[m]*cosk[m])*sin(phik[p]);
+                                //this is just cross product of e_k and v_k above
+                                e_kpara[0] = pow(cosk[m],2)*sin(Btheta) - cos(Btheta)*cos(phik[p])*cosk[m]*sqrt(1-cosk[m]*cosk[m]) + (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*sin(Btheta),
+                                e_kpara[1] = -sin(Btheta)*(1-cosk[m]*cosk[m])*sin(2*phik[p])/2 - cosk[m]*sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta), //incoming photon polarization vector (para)
+                                e_kpara[2] = (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*cos(Btheta) - sqrt(1-cosk[m]*cosk[m])*cos(phik[p])*sin(Btheta)*cosk[m] + (1-cosk[m]*cosk[m])*pow(cos(phik[p]),2)*cos(Btheta);
+                                //e_k above is not normalised
+                                q_theta = pow(1-pow(cos(Btheta)*cosk[m]+sin(Btheta)*cos(phik[p])*sqrt(1-cosk[m]*cosk[m]),2),(effective_alpha[l]+1)/4);
+
+
+//                                if (X > 1) {
+//                                    KN = 0.4;
+//                                } else if (X>10){
+//                                    KN = 0.1;
 //                                }
-//                                F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
-////                                X = sqrt(f_pol_IC[n]/(2*f_pol[l]))*f_pol[l]*4.14E-15/Me_EV;
-//                                v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
-//                                e_k[0] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta);
-//                                e_k[1] = sin(Btheta)*cosk[m] - cos(Btheta)*sqrt(1-cosk[m]*cosk[m])*cos(phik[p]); //incoming photon polarization vector (perp)
-//                                e_k[2] = -sin(Btheta)*sqrt(1-cosk[m]*cosk[m])*sin(phik[p]);
-//                                //this is just cross product of e_k and v_k above
-//                                e_kpara[0] = pow(cosk[m],2)*sin(Btheta) - cos(Btheta)*cos(phik[p])*cosk[m]*sqrt(1-cosk[m]*cosk[m]) + (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*sin(Btheta),
-//                                e_kpara[1] = -sin(Btheta)*(1-cosk[m]*cosk[m])*sin(2*phik[p])/2 - cosk[m]*sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta), //incoming photon polarization vector (para)
-//                                e_kpara[2] = (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*cos(Btheta) - sqrt(1-cosk[m]*cosk[m])*cos(phik[p])*sin(Btheta)*cosk[m] + (1-cosk[m]*cosk[m])*pow(cos(phik[p]),2)*cos(Btheta);
-//                                //e_k above is not normalised
-//                                q_theta = pow(1-pow(cos(Btheta)*cosk[m]+sin(Btheta)*cos(phik[p])*sqrt(1-cosk[m]*cosk[m]),2),(effective_alpha[l]+1)/4);
-//
-//
-////                                if (X > 1) {
-////                                    KN = 0.4;
-////                                } else if (X>10){
-////                                    KN = 0.1;
-////                                }
-////                                else if (X>100){
-////                                    KN = 0.02;
-////                                }
-////                                else if (X>1000){ // maybe too intense
-////                                    KN = 0.0;
-////                                }
-////                                else {
-////                                    KN = 1.0;
-////                                }
-//
-//                                //printf("F_min,f_pol_IC[n],f_pol[l],cosk[m] %.5e\t%.5e\t%.5e\t%.5e\n", F_min,f_pol_IC[n],f_pol[l],cosk[m]);
-//                                if (F_min*(Me_EV) > E_elecs[array_size-1]) {
-//                                    P_perpIC[n] += 0.0;
-//                                    P_paraIC[n] += 0.0;
+//                                else if (X>100){
+//                                    KN = 0.02;
 //                                }
-//                                else if (F_min*(Me_EV) > E_elecs[0]) {
-//                                    for (o=0; o<array_size; o++){ //find Fmin location in E_elecs
-//                                        if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
-//                                        break;
-//                                        }
-//                                    }
-//                                    for (i=o; i<array_size; i++){ //E_e
-////                                        Pperpperp = 0.0;
-////                                        Pperppara = 0.0;
-////                                        Pparaperp = 0.0;
-////                                        Pparapara = 0.0;
-//
-//                                        //3.95417e-103
-//                                        //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
-//                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
-//                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pperpperp %.5e\n", Pperpperp);
-//                                        IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//
-//                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pperppara %.5e\n", Pperppara);
-//                                        IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//                                        //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
-//
-//                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pparaperp %.5e\n", Pperpperp);
-//                                        IC_Stokes[h][n][0] += (Pparaperp/(n_blocks)), IC_Stokes[h][n][1] += (Pparaperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//
-//                                        //printf("Pparaperp1 %.5e\n", Pparaperp);
-//
-//                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pparapara %.5e\n", Pparapara);
-//                                        IC_Stokes[h][n][0] += (Pparapara/(n_blocks)), IC_Stokes[h][n][1] += (Pparapara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//
-//                                        P_perpIC[n] += Pperpperp + Pperppara;
-//                                        P_paraIC[n] += Pparaperp + Pparapara;
-//
-//                                        //Ps_per_m_test[i] += Pperpperp + Pperppara + Pparaperp + Pparapara;
-//                                    }
-//                                    //for (i=o; i<array_size; i++){
-//                                    //    sig1 += Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
-//                                    //    sig2 += Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
-//                                    //}
-//                                    //printf("PiBCS %.5e\t%.5e\t%.5d\t%.5e\t%.5e\n", (sig1+sig2)/(sig1+3*sig2), F_min,1,sig1,sig2);
-//                                    //sig1 = 0.0;
-//                                    //sig2 = 0.0;
-//
+//                                else if (X>1000){ // maybe too intense
+//                                    KN = 0.0;
 //                                }
 //                                else {
-//                                    for (i=0; i<array_size; i++){ //E_e
-////                                        Pperpperp = 0.0;
-////                                        Pperppara = 0.0;
-////                                        Pparaperp = 0.0;
-////                                        Pparapara = 0.0;
-//
-//                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pperpperp1 %.5e\n", Pperpperp);
-//                                        IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//
-//                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pperppara1 %.5e\n", Pperppara);
-//                                        IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//                                        //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
-//
-//                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pparaperp1 %.5e\n", Pperpperp);
-//                                        IC_Stokes[h][n][0] += (Pparaperp/(n_blocks)), IC_Stokes[h][n][1] += (Pparaperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//
-//                                        //printf("Pparaperp1 %.5e\n", Pparaperp);
-//
-//                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-//                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-//                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-//                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
-//                                        //printf("Pparapara1 %.5e\n", Pparapara);
-//                                        IC_Stokes[h][n][0] += (Pparapara/(n_blocks)), IC_Stokes[h][n][1] += (Pparapara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-//
-//                                        //printf("Pparapara2 %.5e\n", Pparapara);
-//
-//                                        P_perpIC[n] += Pperpperp + Pperppara;
-//                                        P_paraIC[n] += Pparaperp + Pparapara;
-//
-//                                        //Ps_per_m_test[i] += Pperpperp + Pperppara + Pparaperp + Pparapara;
+//                                    KN = 1.0;
+//                                }
+
+                                //printf("F_min,f_pol_IC[n],f_pol[l],cosk[m] %.5e\t%.5e\t%.5e\t%.5e\n", F_min,f_pol_IC[n],f_pol[l],cosk[m]);
+                                if (F_min*(Me_EV) > E_elecs[array_size-1]) {
+                                    P_perpIC[n] += 0.0;
+                                    P_paraIC[n] += 0.0;
+                                }
+                                else if (F_min*(Me_EV) > E_elecs[0]) {
+                                    for (o=0; o<array_size; o++){ //find Fmin location in E_elecs
+                                        if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
+                                        break;
+                                        }
+                                    }
+                                    for (i=o; i<array_size; i++){ //E_e
+//                                        Pperpperp = 0.0;
+//                                        Pperppara = 0.0;
+//                                        Pparaperp = 0.0;
+//                                        Pparapara = 0.0;
+
+                                        //3.95417e-103
+                                        //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
+                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pperpperp %.5e\n", Pperpperp);
+                                        IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pperppara %.5e\n", Pperppara);
+                                        IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+                                        //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
+
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pparaperp %.5e\n", Pperpperp);
+                                        IC_Stokes[h][n][0] += (Pparaperp/(n_blocks)), IC_Stokes[h][n][1] += (Pparaperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                        //printf("Pparaperp1 %.5e\n", Pparaperp);
+
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pparapara %.5e\n", Pparapara);
+                                        IC_Stokes[h][n][0] += (Pparapara/(n_blocks)), IC_Stokes[h][n][1] += (Pparapara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                        P_perpIC[n] += Pperpperp + Pperppara;
+                                        P_paraIC[n] += Pparaperp + Pparapara;
+
+                                        //Ps_per_m_test[i] += Pperpperp + Pperppara + Pparaperp + Pparapara;
+                                    }
+                                    //for (i=o; i<array_size; i++){
+                                    //    sig1 += Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
+                                    //    sig2 += Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
+                                    //}
+                                    //printf("PiBCS %.5e\t%.5e\t%.5d\t%.5e\t%.5e\n", (sig1+sig2)/(sig1+3*sig2), F_min,1,sig1,sig2);
+                                    //sig1 = 0.0;
+                                    //sig2 = 0.0;
+
+                                }
+                                else {
+                                    for (i=0; i<array_size; i++){ //E_e
+//                                        Pperpperp = 0.0;
+//                                        Pperppara = 0.0;
+//                                        Pparaperp = 0.0;
+//                                        Pparapara = 0.0;
+
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pperpperp1 %.5e\n", Pperpperp);
+                                        IC_Stokes[h][n][0] += (Pperpperp/(n_blocks)), IC_Stokes[h][n][1] += (Pperpperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pperppara1 %.5e\n", Pperppara);
+                                        IC_Stokes[h][n][0] += (Pperppara/(n_blocks)), IC_Stokes[h][n][1] += (Pperppara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+                                        //printf("ICStokes123 %.5e\t%.5e\t%.5e\n", IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
+
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pparaperp1 %.5e\n", Pperpperp);
+                                        IC_Stokes[h][n][0] += (Pparaperp/(n_blocks)), IC_Stokes[h][n][1] += (Pparaperp/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                        //printf("Pparaperp1 %.5e\n", Pparaperp);
+
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                        *KN; //3/4*((1+X)/pow(X,3) * (2*X*(1+X)/(1+2*X) - log(1+2*X)) + 1/(2*X)*log(1+2*X) - (1+3*X)/pow(1+2*X,2)) ; //KN cross section correction for power cutoff (doesnt affect polarization)
+                                        //printf("Pparapara1 %.5e\n", Pparapara);
+                                        IC_Stokes[h][n][0] += (Pparapara/(n_blocks)), IC_Stokes[h][n][1] += (Pparapara/(n_blocks))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(n_blocks))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                        //printf("Pparapara2 %.5e\n", Pparapara);
+
+                                        P_perpIC[n] += Pperpperp + Pperppara;
+                                        P_paraIC[n] += Pparaperp + Pparapara;
+
+                                        //Ps_per_m_test[i] += Pperpperp + Pperppara + Pparaperp + Pparapara;
+                                    }
+//                                    for (i=0; i<array_size; i++){
+//                                        sig1 += Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
+//                                        sig2 += Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
 //                                    }
-////                                    for (i=0; i<array_size; i++){
-////                                        sig1 += Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
-////                                        sig2 += Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]);
-////                                    }
-////                                    printf("PiBCS %.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", (sig1+sig2)/(sig1+3*sig2),F_min,f_pol_IC[n]/f_pol[l],cosk[m],phik[p]);
-////                                    sig1 = 0.0;
-////                                    sig2 = 0.0;
-//                                }
-//                                if (h != g) {
-//                                   m = nn;
-//                                }
-//                            }
-//                        }
-//                    }
+//                                    printf("PiBCS %.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", (sig1+sig2)/(sig1+3*sig2),F_min,f_pol_IC[n]/f_pol[l],cosk[m],phik[p]);
+//                                    sig1 = 0.0;
+//                                    sig2 = 0.0;
+                                }
+                                if (h != g) {
+                                   m = nn;
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+//            for (n=0; n<array_size; n++){
+//                fprintf(PperpfileIC, "\t%.5e", P_perpIC[n]);//*pow(doppler_factor, 4.0)); //polarisation power now doppler boosted in python file
+//                fprintf(PparafileIC, "\t%.5e",P_paraIC[n]);//*pow(doppler_factor, 4.0));
+//                if (n==array_size-1) {
+//                    fprintf(PperpfileIC, "\n");
+//                    fprintf(PparafileIC, "\n");
 //                }
-//
 //            }
-////            for (n=0; n<array_size; n++){
-////                fprintf(PperpfileIC, "\t%.5e", P_perpIC[n]);//*pow(doppler_factor, 4.0)); //polarisation power now doppler boosted in python file
-////                fprintf(PparafileIC, "\t%.5e",P_paraIC[n]);//*pow(doppler_factor, 4.0));
-////                if (n==array_size-1) {
-////                    fprintf(PperpfileIC, "\n");
-////                    fprintf(PparafileIC, "\n");
-////                }
-////            }
-//        }
+        }
 
 
         //printf("ICPI %.5e\t%.5e\t%.5e\n", IC_Pi[30],IC_PA[10],S_Pi[45]);
