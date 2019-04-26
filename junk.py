@@ -32,7 +32,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
     legends = 0
     if isinstance(filename, str):
         filename = [filename]
-        legends = 1
+        legends = 0
 
     keydat = np.loadtxt(keyfile)
     if keydat.ndim == 1:
@@ -175,9 +175,10 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
 
 
         line0 = ax0.plot(freqtoeV(fq_mids), Pol,'m',label='Pol Fraction')
-        line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'m-.',label='Pol Fraction std')
+        if (n_examples > 1):
+           line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'m-.',label='Pol Fraction std')
+           line01 = ax0.plot(freqtoeV(fq_mids_IC), stdpi_IC[:,0], 'r-.',label='Pol IC std')
         line0143 = ax0.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), Pol_IC[P_detected_IC!=0.0],'r',label='Pol Fraction IC')
-        line01 = ax0.plot(freqtoeV(fq_mids_IC), stdpi_IC[:,0], 'r-.',label='Pol IC std')
         line02 = ax0.plot(freqtoeV(fq_mids), Pol_ICS, 'k', label='Pol Fraction ICS')
         #line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
         #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
@@ -189,8 +190,9 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
         #subplot for the EVPA
 
         line05 = ax05.plot(freqtoeV(fq_mids), EVPA*180/np.pi, color='g',label='EVPA')
-        line005 = ax05.plot(freqtoeV(fq_mids), stdpi[:,1]*180/np.pi, color='g',linestyle='-.',label='EVPA std')
-        line0053 = ax05.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 1] * 180 / np.pi, color='r', linestyle='-.', label='EVPAIC std')
+        if (n_examples > 1):
+           line005 = ax05.plot(freqtoeV(fq_mids), stdpi[:,1]*180/np.pi, color='g',linestyle='-.',label='EVPA std')
+           line0053 = ax05.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 1] * 180 / np.pi, color='r', linestyle='-.', label='EVPAIC std')
         line051 = ax05.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), EVPA_IC[P_detected_IC!=0.0]*180/np.pi, color='r',label='EVPAIC')
         line052 = ax05.plot(freqtoeV(fq_mids), EVPA_ICS * 180 / np.pi, color='k', label='EVPAICS')
         #the second subplot
@@ -201,8 +203,9 @@ def plot_SED(filename,keyfile,freqfile,IC=True): #plots SED with polarisation fr
         line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0],linestyle='-.', color=(j/17,0.2,0.2), label='IC')#Inverse Compton
         line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
         line4 = ax1.plot(freqtoeV(fq_mids), P_detected,'-', color=(0.1,j/17,1), label='synchrotron') #synchrotron
-        line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
-        line004 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')
+        if (n_examples > 1):
+           line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
+           line006 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')
         #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
         #line6 = ax1.plot(ph_energy_MK501, flux_MK501, 'k.', label='data 2008-2009')
         #line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')
