@@ -28,8 +28,8 @@ const double H = 6.63E-34; //Plancks constant
 
 
 //define some looping parameters
-int array_size=50; // sets the number of synchrotron & IC pts
-double array_size_d=50.0; // use to set log ratios, should be the same as above line but with .0
+int array_size=100; // sets the number of synchrotron & IC pts
+double array_size_d=100.0; // use to set log ratios, should be the same as above line but with .0
 int i, l, m, n, o, p, g, h, nn; //some looping parameters
 double w, x, y, z, a, b, c, d, q;
 int dx_set; // use to define smallest non zero population
@@ -46,10 +46,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double E_min = 5.11E6; // Minimum electron energy 
     double E_max = 1.7E10;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
     double alpha = 1.85;//1.95;//1.9//1.95//2.000001; // PL index of electrons
-     double theta_open_p = 9.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
+     double theta_open_p = 40.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
     double theta_obs; //4//3.0;//*(M_PI/180.0); // observers angle to jet axis in rad 
     sscanf(argv[4], "%lf", &theta_obs);
-    double gamma_bulk = 3.01;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
+    double gamma_bulk = 14;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
     int n_blocks;//127; //for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     sscanf(argv[5], "%d", &n_blocks);
     int n_rings; //6; //up to 6 rings possible atm, must choose number of rings corresponding to number of zones
@@ -98,7 +98,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     PparafileIC = fopen("PparafileIC.txt", "w");
     Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //projected B field onto plane of the sky for each section
     block_thetafile = fopen("block_thetafile.txt","w"); //saves the angle to the line of sight of each block
-    TESTFIL2 = fopen("TESTFIL2.txt","a");
+    TESTFIL2 = fopen("TESTFIL2.txt","w");
     fprintf(keyparams, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\t%d \n", W_j, gamma_bulk, theta_obs, theta_open_p, alpha, B, E_max, n_blocks, array_size);
 
     //define some useful parameters to gauge progress

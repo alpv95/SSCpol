@@ -28,7 +28,7 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
     legends = 0
     if isinstance(filename, str):
         filename = [filename]
-        legends = 1
+        legends = 0
 
     keydat = np.loadtxt('keyparams.txt')
     #opdat = np.loadtxt('EBLOpacity.txt') #high energy gamma opacities for different z due to EBL
@@ -80,30 +80,41 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
     # the fisrt subplot
     ax0 = plt.subplot(gs[0])
     # log scale for axis X of the first subplot
-    ax0.set_title('$W_j= %.2G W$, $B_0= %.2G T$, $E_{max}= %.2G eV$,\n' % (W_j, B0, E_max)
-                  + r'$\alpha= %.2f $, $\theta_{opening} = %.1f ^{\circ}$, $\theta_{obs}= %.1f ^{\circ}$,'
-                    r'$\gamma_{bulk}= %.1f $, $n_{blocks}= %d $' % (
-                  alpha, 180 / np.pi * np.arctan(np.tan(np.pi * theta_open_p / 180) / gamma_bulk), theta_obs,
-                  gamma_bulk, n_blocks))
+    #ax0.set_title('$W_j= %.2G W$, $B_0= %.2G T$, $E_{max}= %.2G eV$,\n' % (W_j, B0, E_max)
+                 # + r'$\alpha= %.2f $, $\theta_{opening} = %.1f ^{\circ}$, $\theta_{obs}= %.1f ^{\circ}$,'
+                 #   r'$\gamma_{bulk}= %.1f $, $n_{blocks}= %d $' % (
+                 # alpha, 180 / np.pi * np.arctan(np.tan(np.pi * theta_open_p / 180) / gamma_bulk), theta_obs,
+                 # gamma_bulk, n_blocks))
     ax0.set_xscale("log")
     ax0.set_xlim([1E-6, 1E13])
     ax0.set_ylim([0, 1.0])
-    ax0.set_ylabel(r'$\Pi(\omega)$', size='13')
+    ax0.set_ylabel(r'$\Pi(\omega)$', size='15')
+    ax0.tick_params(labelbottom=False, labeltop=False, labelleft=True, labelright=False,
+                      bottom=True, top=True, left=True, right=True)
+    ax0.tick_params(axis="y", labelsize=12)
     ax05 = plt.subplot(gs[1], sharex=ax0)
     ax05.set_xlim([1E-6, 1E13])
     ax05.set_ylim([-90, 90])
     yticks = ax05.yaxis.get_major_ticks()
-    ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='13')
+    ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='15')
+    ax05.tick_params(labelbottom=False, labeltop=False, labelleft=True, labelright=False,                      
+                      bottom=True, top=True, left=True, right=True)
+    ax05.tick_params(axis="y", labelsize=12)
+
     ax1 = plt.subplot(gs[2], sharex=ax0)
     ax1.set_yscale('log')
-    ax1.set_ylim([1E-14, 9.99E-10])
-    ax1.set_xlim([1E-6, 1E13])
-    ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='13')
-    ax1.set_xlabel(r'$\nu$ [eV]', size='13')
-    plt.setp(ax0.get_xticklabels(), visible=False)
+    ax1.set_ylim([1E-18, 1E-12])
+    ax1.set_xlim([1E-4, 1E17])
+    ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='15')
+    ax1.set_xlabel(r'$h\nu$ [eV]', size='15')
+    ax1.tick_params(labelbottom=True, labeltop=False, labelleft=True, labelright=False,                      
+                      bottom=True, top=True, left=True, right=True)
+    ax1.tick_params(axis="x", labelsize=12)
+    ax1.tick_params(axis="y", labelsize=12)
+    #plt.setp(ax0.get_xticklabels(), visible=False)
     # remove last tick label for the second subplot
-    yticks = ax1.yaxis.get_major_ticks()
-    yticks[-2].label1.set_visible(False)
+    #yticks = ax1.yaxis.get_major_ticks()
+    #yticks[-2].label1.set_visible(False)
 
     plt.subplots_adjust(hspace=.0)
 
@@ -117,7 +128,7 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
         stdpi_IC = np.zeros((array_size, 3))
         pi_ICS = np.zeros((array_size, 3))
         stdpi_ICS = np.zeros((array_size, 3))
-        n_examples = 20
+        n_examples = 1
 
         for i in range(n_examples): #calculates average pi/evpa/power over many jet realisations
             #i=j*20
@@ -129,9 +140,9 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
             pi_IC[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 4]
             pi_IC[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 5]
 
-            # pi_ICS[:, 0] += fullpi[(i * array_size):(i * array_size) + array_size, 6]
-            # pi_ICS[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 7]
-            # pi_ICS[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 8]
+            pi_ICS[:, 0] += fullpi[(i * array_size):(i * array_size) + array_size, 6]
+            pi_ICS[:, 1] += fullpi[(i * array_size):(i * array_size) + array_size, 7]
+            pi_ICS[:, 2] += fullpi[(i * array_size):(i * array_size) + array_size, 8]
 
         pi = pi / n_examples
         pi_IC = pi_IC / n_examples
@@ -147,10 +158,10 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
             stdpi_IC[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 4] - pi_IC[:, 1]) ** 2
             stdpi_IC[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 5] - pi_IC[:, 2]) * 1.0E7 * (1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0)))**2
 
-            # stdpi_ICS[:, 0] += (fullpi[(i * array_size):(i * array_size) + array_size, 6] - pi_ICS[:, 0]) ** 2
-            # stdpi_ICS[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 7] - pi_ICS[:, 1]) ** 2
-            # stdpi_ICS[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 8] - pi_ICS[:, 2]) * 1.0E7 * (
-            #             1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))) ** 2
+            stdpi_ICS[:, 0] += (fullpi[(i * array_size):(i * array_size) + array_size, 6] - pi_ICS[:, 0]) ** 2
+            stdpi_ICS[:, 1] += (fullpi[(i * array_size):(i * array_size) + array_size, 7] - pi_ICS[:, 1]) ** 2
+            stdpi_ICS[:, 2] += ((fullpi[(i * array_size):(i * array_size) + array_size, 8] - pi_ICS[:, 2]) * 1.0E7 * (
+                         1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))) ** 2
 
         stdpi = np.sqrt(stdpi / (n_examples))
         stdpi_IC = np.sqrt(stdpi_IC / (n_examples))
@@ -168,10 +179,10 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
         P_detected_ICS = pi_ICS[:, 2] * 1.0E7 * (1.0 / ((4.0 * np.pi * d_Blazar ** 2.0) * (1.0 + z) ** 2.0))
 
 
-        line0 = ax0.plot(freqtoeV(fq_mids), Pol,'m',label='Pol Fraction')
-        line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'m-.',label='Pol Fraction std')
+        line0 = ax0.plot(freqtoeV(fq_mids), Pol,'b',label='Pol Fraction')
+        #line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'b-.',label='Pol Fraction std')
         line0143 = ax0.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), Pol_IC[P_detected_IC!=0.0],'r',label='Pol Fraction IC')
-        line01 = ax0.plot(freqtoeV(fq_mids_IC), stdpi_IC[:,0], 'r-.',label='Pol IC std')
+        #line01 = ax0.plot(freqtoeV(fq_mids_IC), stdpi_IC[:,0], 'r-.',label='Pol IC std')
         line02 = ax0.plot(freqtoeV(fq_mids), Pol_ICS, 'k', label='Pol Fraction ICS')
         #line1 = ax0.plot(freqtoeV(fq_mids), Pol_Init,'r',label='Initial Population')
         #line2 = ax0.plot(freqtoeV(fq_mids), Pol_single, color='g',label='Single e')
@@ -182,9 +193,9 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
 
         #subplot for the EVPA
 
-        line05 = ax05.plot(freqtoeV(fq_mids), EVPA*180/np.pi, color='g',label='EVPA')
-        line005 = ax05.plot(freqtoeV(fq_mids), stdpi[:,1]*180/np.pi, color='g',linestyle='-.',label='EVPA std')
-        line0053 = ax05.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 1] * 180 / np.pi, color='r', linestyle='-.', label='EVPAIC std')
+        line05 = ax05.plot(freqtoeV(fq_mids), EVPA*180/np.pi, color='b',label='EVPA')
+        #line005 = ax05.plot(freqtoeV(fq_mids), stdpi[:,1]*180/np.pi, color='b',linestyle='-.',label='EVPA std')
+        #line0053 = ax05.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 1] * 180 / np.pi, color='r', linestyle='-.', label='EVPAIC std')
         line051 = ax05.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), EVPA_IC[P_detected_IC!=0.0]*180/np.pi, color='r',label='EVPAIC')
         line052 = ax05.plot(freqtoeV(fq_mids), EVPA_ICS * 180 / np.pi, color='k', label='EVPAICS')
         #the second subplot
@@ -192,11 +203,11 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
 
         #savgol filter to smooth bumpy ICS from rebinning larger IC bins in synchrotron ones.
         #np.savetxt("singleSED.txt", np.array([freqtoeV(fq_mids),P_detected]))
-        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0], linestyle='-.',color=(j/17,0.2,0.2), label='IC')#Inverse Compton
-        #line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
-        line4 = ax1.plot(freqtoeV(fq_mids), P_detected, '-', color=(0.1,j/17,1), label='synchrotron') #synchrotron
-        line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
-        line004 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')
+        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0], linestyle='-.',color='r', label='IC')#Inverse Compton
+        line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
+        line4 = ax1.plot(freqtoeV(fq_mids), P_detected, '-', color='b', label='synchrotron') #synchrotron
+        #line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b-.', label='synchrotron std')
+        #line004 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r-', label='IC std')
         #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
         #line6 = ax1.plot(ph_energy_MK501, flux_MK501, 'k.', label='data 2008-2009')
         #line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')

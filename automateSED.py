@@ -5,9 +5,9 @@ import sys
 import junk
 
 subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h'])
-for i in range(20):
+for i in range(1):
     EVPA_rotation = 0
-    theta_obs = 0.5
+    theta_obs = 1.5
     DD = 1
     if ((i>=40) and (i<104)) or ((i>=150) and (i<182)):
         EVPA_rotation = 0
@@ -32,11 +32,11 @@ for i in range(20):
     # else:
     #     n_blocks = 127
     #     n_rings = 6
-    n_blocks = 7
-    n_rings = 1
+    n_blocks = 19
+    n_rings = 2
 
     subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD),str(theta_obs),str(n_blocks),str(n_rings)])
-    #junk.plot_SED("TESTFIL2.txt")
+    junk.plot_SED("TESTFIL2.txt")
     print(i)
     #junk.Save_movie(count=i)
 
