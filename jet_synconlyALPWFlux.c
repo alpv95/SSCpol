@@ -28,8 +28,8 @@ const double H = 6.63E-34; //Plancks constant
 
 
 //define some looping parameters
-int array_size=100; // sets the number of synchrotron & IC pts
-double array_size_d=100.0; // use to set log ratios, should be the same as above line but with .0
+int array_size=50; // sets the number of synchrotron & IC pts
+double array_size_d=50.0; // use to set log ratios, should be the same as above line but with .0
 int i, l, m, n, o, p, g, h, nn; //some looping parameters
 double w, x, y, z, a, b, c, d, q;
 int dx_set; // use to define smallest non zero population
@@ -43,12 +43,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double R0 = 0.0, R = 0.0; //4.532E13;//7.32E13; // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; //changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double E_min = 5.11E6; // Minimum electron energy 
-    double E_max = 9.2E10;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
-    double alpha = 1.9;//1.95;//1.9//1.95//2.000001; // PL index of electrons
-    double theta_open_p = 50.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
+    double E_max = 1.7E10;//2.5E10 8.1E9;//50e9//8.1E9//5.0E9;//5.60E9; // Energy of the ECO in eV 
+    double alpha = 1.85;//1.95;//1.9//1.95//2.000001; // PL index of electrons
+    double theta_open_p = 40.0;// 60 50//*(M_PI/180.0); // opening angle of the jet in the fluid frame 
     double theta_obs; //4//3.0;//*(M_PI/180.0); // observers angle to jet axis in rad 
     sscanf(argv[4], "%lf", &theta_obs);
-    double gamma_bulk = 10.0;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
+    double gamma_bulk = 16.0;//pow(10,(log10(W_j)*0.246-8.18765 + 0.09)); //final additive constant to make sure highest is 40 and lowest is 5//12.0; // bulk Lorentz factor of jet material
     int n_blocks;//127; //for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     sscanf(argv[5], "%d", &n_blocks);
     int n_rings; //6; //up to 6 rings possible atm, must choose number of rings corresponding to number of zones
@@ -99,11 +99,21 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //strcat(Edensity,task_idst);
     char testfil[40] = "/TESTFIL";
     strcat(testfil,task_idst);
-    prepend(testfil, results_dir);		
+    prepend(testfil, results_dir);
+    char icz[40] = "/IC_Z";
+    strcat(icz,task_idst);
+    prepend(icz, results_dir);
+    char sz[40] = "/S_Z";
+    strcat(sz,task_idst);
+    prepend(sz, results_dir);
+
+		
     //define some files to store output data
-    FILE *freqrange, *basicdata, *keyparams, *energydensity ,*TESTFIL2;
+    FILE *freqrange, *basicdata, *keyparams, *TESTFIL2, *IC_Z, *S_Z; //, *Xfile;
 
     //Nfile = fopen("Ndata.txt", "w"); //store electron populations
+    IC_Z = fopen(icz, "w");
+    S_Z = fopen(sz, "w");
     freqrange = fopen(frange, "w");//store frequency bin boundaries
     //freqfile = fopen("critfreqs.txt", "w");//store critical frequencies
     //opfile = fopen("kvalues.txt", "w");//store opacity values for each jet section
@@ -122,6 +132,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //PparafileIC = fopen("PparafileIC.txt", "w");
     //Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //proj/ected B field onto plane of the sky for each section
     //block_thetafile = fopen("block_thetafile.txt","w"); //saves the angle to the line of sight of each block
+    //Xfile = fopen("Xfile.txt","w");
     TESTFIL2 = fopen(testfil,"w");
     fprintf(keyparams, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\t%d \n", W_j, gamma_bulk, theta_obs, theta_open_p, alpha, B, E_max, n_blocks, array_size);
 
@@ -194,7 +205,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(Ps_per_m_test, 0.0, array_size*sizeof(Ps_per_m_test[0]));
     double Sync_losses[array_size];// store total electron energy losses
     double P_single[array_size];// power emitted by a single electron of energy E
-    double Ps_per_m_IC[array_size]; //IC power per m
+    //double Ps_per_m_IC[array_size]; //IC power per m
     double Ps_per_mIC_elec[array_size]; //energy lost by each electron bin per m of IC emission
     memset(Ps_per_mIC_elec, 0.0, array_size*sizeof(Ps_per_mIC_elec[0]));
     double IC_losses[array_size]; //store electron IC energy losses
@@ -250,6 +261,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(P_perpIC, 0.0, array_size*sizeof(P_perpIC[0]));
     double P_paraIC[array_size];
     memset(P_paraIC, 0.0, array_size*sizeof(P_paraIC[0]));
+    double P_X[array_size];
+    memset(P_X, 0.0, array_size*sizeof(P_X[0]));
     double dfreqs_pol[array_size]; //again fixed size
     double dfreqs_polIC[array_size];
     double F_min;
@@ -369,30 +382,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double phi_helix = 0;//M_PI/3; //phase shift, just an initial condition
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
 
-    //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
-    int thread_id;
-    int task_id;
-    sscanf(argv[2], "%d", &thread_id);
-    sscanf(argv[7], "%d", &task_id);
-    MTRand seedr = seedRand((unsigned)time(NULL)+(unsigned)(task_id + thread_id)); //random seed supplemented by task and thread id
-    //MTRand seedr = seedRand(11); //fix random seed
-    double B_0[n_blocks];
-    double B_1[n_blocks];
-    double B_2[n_blocks];
-    double unif_theta;
-    double unif_phi;
-    for (i=0; i<(n_blocks); i++){ //these are the random B-field vectors in each block as if we are looking straight down jet (have to rotate by theta_obs)
-      unif_phi = 2 * M_PI * genRand(&seedr);
-      unif_theta = acos(2 * genRand(&seedr) - 1);
-
-      B_0[i] = cos(unif_phi) * sin(unif_theta);
-      B_1[i] = sin(unif_phi) * sin(unif_theta);
-      B_2[i] = cos(unif_theta);
-
-      //printf("randBs %.5e\t%.5e\t%.5e\n",B_0[i],B_1[i],B_2[i]);
-    }
-
-
     int EVPA_rotation;
     sscanf(argv[1], "%d", &EVPA_rotation); //taking input from command line if true begin EVPA rotation, if false do not
     int DopDep;
@@ -480,15 +469,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     }
 
 
-    double Bx[n_blocks];
-    double By[n_blocks];
-    double Bz[n_blocks];
-    double Bx_helical[n_blocks]; //simplifies angular shifts for the helical components
-    double By_helical[n_blocks];
-    double Bz_helical[n_blocks];
-    double BX[n_blocks]; //for joint helical and random array
-    double BY[n_blocks];
-    double BZ[n_blocks];
 
     //Sectional, or possibly full, Stokes vector bins for Synchrotron and IC respectively
     double S_Stokes[n_blocks][array_size][3];
@@ -508,6 +488,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* n_blocks * array_size * 3);
     double IC_StokesTotal[array_size][3];
     memset(IC_StokesTotal, 0, sizeof(IC_StokesTotal[0][0])* array_size * 3);
+
+    double IC_StokesZTotal[n_blocks][array_size][3];
+    memset(IC_StokesZTotal, 0, sizeof(IC_StokesZTotal[0][0][0])* n_blocks * array_size * 3);
+    double S_StokesZTotal[n_blocks][array_size][3];
+    memset(S_StokesZTotal, 0, sizeof(S_StokesZTotal[0][0][0])* n_blocks * array_size * 3);
     double IC_Pi[array_size];
     double IC_PA[array_size];
     double IC_P[array_size];
@@ -541,19 +526,163 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double Pparaperp = 0.0;
     double Pparapara = 0.0;
     double effective_alpha[array_size];
+    
+    int breakstep;
+    sscanf(argv[8], "%d", &breakstep);
+
+    //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
+    int thread_id;
+    int task_id;
+    sscanf(argv[2], "%d", &thread_id);
+    sscanf(argv[7], "%d", &task_id);
+    MTRand seedr = seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
+    //MTRand seedr = seedRand(11); //fix random seed
+    int nLT_sections = 30;
+
+    double Bx_helical[n_blocks]; //simplifies angular shifts for the helical components
+    double By_helical[n_blocks];
+    double Bz_helical[n_blocks];
+    double BX[nLT_sections][n_blocks]; //for joint helical and random array
+    double BY[nLT_sections][n_blocks];
+    double BZ[nLT_sections][n_blocks];
+    //B_effectives due to RPAR for each zone in every other zone
+    double B_effectives[nLT_sections][n_blocks][n_blocks][3];
+    memset(B_effectives, 0, sizeof(B_effectives[0][0][0][0])* nLT_sections *  n_blocks * n_blocks * 3);
 
     int marker = 0;
     int marker_prev = 0;
     int marker_list[n_blocks];
-    memset(marker_list, 0, sizeof(marker_list[0])* n_blocks);
+    for (n=0; n<n_blocks; n++) {
+        marker_list[n] = nLT_sections / 2;
+        printf("marker_list init = %d", marker_list[n]);
+    }
+
+    double B_0[nLT_sections][n_blocks];
+    double B_1[nLT_sections][n_blocks];
+    double B_2[nLT_sections][n_blocks];
+    double unif_theta;
+    double unif_phi;
+    for (l=0; l<nLT_sections; l++){
+        for (i=0; i<(n_blocks); i++){ //these are the random B-field vectors in each block as if we are looking straight down jet (have to rotate by theta_obs)
+          unif_phi = 2 * M_PI * genRand(&seedr);
+          unif_theta = acos(2 * genRand(&seedr) - 1);
+
+          B_0[l][i] = cos(unif_phi) * sin(unif_theta);
+          B_1[l][i] = sin(unif_phi) * sin(unif_theta);
+          B_2[l][i] = cos(unif_theta);
+
+          //printf("randBs %.5e\t%.5e\t%.5e\n",B_0[i],B_1[i],B_2[i]);
+       }
+    }
+
+    //Putting B_effectives setup outside of emission loop because the B-fields do not change along the jet length for ICPaper
+
+    //Rotate B-fields along spherical cone surface slightly and also transversify depending on R/R0
 
 
-    //B_effectives due to RPAR for each zone in every other zone
-    double B_effectives[n_blocks][n_blocks][3];
-    memset(B_effectives, 0, sizeof(B_effectives[0][0][0])* n_blocks * n_blocks * 3);
-    
-    int breakstep;
-    sscanf(argv[8], "%d", &breakstep);
+    //Rotate B-fields along spherical cone surface slightly and also transversify depending on R/R0
+    for (i=0; i<(n_blocks); i++){
+          Bx_helical[i] = -sin(t_helix+phi_helix) / sqrt(2);
+          By_helical[i] = cos(t_helix+phi_helix) / sqrt(2); //no transversification or cone surface, 45 deg helix
+          Bz_helical[i] = 1 / sqrt(2);
+    }
+
+    /*REPLACE READING Bs into python with all STokes in C
+    Now Find matrix of all B_effectives for all zones */
+    if (!EVPA_rotation) {
+        for (l=0; l<nLT_sections; l++){
+             for (i=0; i<(n_blocks); i++) {
+                     BX[l][i] = (B_2[l][i]*sin(deg2rad(theta_obs)) + B_0[l][i]*cos(deg2rad(theta_obs)));
+                     BY[l][i] = B_1[l][i];
+                     BZ[l][i] = (B_2[l][i]*cos(deg2rad(theta_obs))-B_0[l][i]*sin(deg2rad(theta_obs)));
+                     printf("BXBYBZ %d\t%d\t%.5e\t%.5e\t%.5e\n",l,i,BX[l][i],BY[l][i],BZ[l][i]);
+             }
+        }
+    } else {
+        for (i=0; i<(n_blocks); i++) {
+            if (i<19){
+                BX[l][i] = (Bz_helical[i]*sin(deg2rad(theta_obs)) + Bx_helical[i]*cos(deg2rad(theta_obs)));
+                BY[l][i] = By_helical[i];
+                BZ[l][i] = (Bz_helical[i]*cos(deg2rad(theta_obs))-Bx_helical[i]*sin(deg2rad(theta_obs)));
+            } else {
+                BX[l][i] = (B_2[l][i]*sin(deg2rad(theta_obs)) + B_0[l][i]*cos(deg2rad(theta_obs)));
+                BY[l][i] = B_1[l][i];
+                BZ[l][i] = (B_2[l][i]*cos(deg2rad(theta_obs))-B_0[l][i]*sin(deg2rad(theta_obs)));
+            }
+
+        }
+    }
+
+    if (!DopDep){
+        for (i=0; i<(n_blocks); i++) {
+            for (l=0; l<n_blocks; l++){
+                Blength = sqrt(BX[m][i]*BX[m][i]+BY[m][i]*BY[m][i]+BZ[m][i]*BZ[m][i]); //normalization important to get correct z angle
+
+                B_effectives[m][l][i][0] = BX[m][i]/Blength;
+                B_effectives[m][l][i][1] = BY[m][i]/Blength;
+                B_effectives[m][l][i][2] = BZ[m][i]/Blength;
+
+            }
+        }
+    } else {
+        for (i=0; i<n_blocks; i++){
+            for (l=0; l<(n_blocks); l++) {
+
+                for (m=0; m<nLT_sections; m++){
+                    DD_3Beffective(BX[m][i],BY[m][i],BZ[m][i],
+                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                                gamma_bulk,B_effectives[m][l][i]);
+                    }
+
+                 DD_3Beffective(align[l][i][0],align[l][i][1],align[l][i][2],
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign0[l][i]);
+
+                 DD_3Beffective(align[l][i][0],align[l][i][1], sin(18.2*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)), //adding cosk offsets
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign1[l][i]);
+                 
+                 DD_3Beffective(align[l][i][0],align[l][i][1], sin(36.4*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign2[l][i]);
+
+                 DD_3Beffective(align[l][i][0],align[l][i][1], sin(-18.2*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign3[l][i]);
+                 
+                 DD_3Beffective(align[l][i][0],align[l][i][1], sin(-36.4*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign4[l][i]);
+
+                 DD_3Beffective(align[l][i][0],align[l][i][1], sin(-60*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign5[l][i]);
+                 
+                 DD_3Beffective(align[l][i][0],align[l][i][1], sin(60*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
+                             cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
+                             sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
+                             gamma_bulk,unitalign6[l][i]);
+                
+            }
+        }
+    }
+
+
+
+//        for (i=0; i<(n_blocks); i++) { //save B-fields for visualization
+//            fprintf(Proj_Bfile,"\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",theta_r[i],theta_phi[i],
+//                    theta_tot[i],atan2(B_1[i],B_0[i]),atan2(By[i],Bx[i]),atan2(By_helical[i],Bx_helical[i]),
+//                    atan2(BY[i],BX[i]),atan2(B_effectives[i][i][1],B_effectives[i][i][0]));
+//        }
+
+
 
     printf("Beginning jet analysis... \n");
     while (x<L_jet)//for (x=0; x<L_jet; x+=dx)
@@ -577,148 +706,24 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         //******************************************************************************************************//
         //Light travel angular effect + gamma bulk effect: causes section mixing
-        if (R*tan(deg2rad(theta_obs)) >= 2 * R0 / (sqrt(n_blocks)) ){
+        if (R*tan(deg2rad(theta_obs)) > R0 / (sqrt(n_blocks)) ){
             for (i=0; i<(n_blocks); i++){
-                if (fabs(R * 2 * theta_r[i]*cos(theta_phi[i]) / th) > tan(deg2rad(theta_obs)) / ((2*(marker_list[i]+1) - 1) * R0 / (sqrt(n_blocks)) )) {
-                    marker_list[i] += 1;
-
-                    unif_phi = 2 * M_PI * genRand(&seedr);
-                    unif_theta = acos(2 * genRand(&seedr) - 1);
-
-                    B_0[i] = cos(unif_phi) * sin(unif_theta);
-                    B_1[i] = sin(unif_phi) * sin(unif_theta);
-                    B_2[i] = cos(unif_theta);
+                if (fabs(R * 2 * theta_r[i]*cos(theta_phi[i]) / th) > (fabs(2*(marker_list[i]-14) - 1) * R0 / (sqrt(n_blocks)) ) / tan(deg2rad(theta_obs))  ) {
+                    if (fabs(theta_phi[i]) > M_PI/2) {
+                       marker_list[i] += 1;
+                    } else {
+                       if (marker_list[i] == 15) {
+                          marker_list[i] -= 2;
+                       } else {
+                         marker_list[i] -= 1;
+                       }
+                    }
                 }
+                printf("i, zone_marker = %d \t  %d \n", i, marker_list[i]);
             }
            printf("\n WARNING: Section Mixing has begun! \n");
         }
         /***************************************************************************************************/
-
-
-        //Rotate B-fields along spherical cone surface slightly and also transversify depending on R/R0
-        for (i=0; i<(n_blocks); i++){
-            //dont need this effect right now given paper doesnt treat it this way
-
-            //Bx[i] = B_0[i]*(cos(theta_r[i])+cos(M_PI/2+theta_phi[i])*cos(M_PI/2+theta_phi[i])*(1-cos(theta_r[i])))
-            //        + B_1[i]*cos(M_PI/2+theta_phi[i])*sin(M_PI/2+theta_phi[i])*(1-cos(theta_r[i]))
-            //        + B_2[i]*R/R*sin(M_PI/2+theta_phi[i])*sin(theta_r[i]);
-            //By[i] = B_0[i]*sin(M_PI/2+theta_phi[i])*cos(M_PI/2+theta_phi[i])*(1-cos(theta_r[i]))
-            //        + B_1[i]*(cos(theta_r[i])+sin(M_PI/2+theta_phi[i])*sin(M_PI/2+theta_phi[i])*(1-cos(theta_r[i])))
-            //        - B_2[i]*R/R*cos(M_PI/2+theta_phi[i])*sin(theta_r[i]);
-            //Bz[i] = -B_0[i]*sin(M_PI/2+theta_phi[i])*sin(theta_r[i])
-            //        + B_1[i]*cos(M_PI/2+theta_phi[i])*sin(theta_r[i])
-            //        + B_2[i]*R/R*cos(theta_r[i]);
-            Bx[i] = B_0[i];
-            By[i] = B_1[i]; //no transversification or cone surface
-            Bz[i] = B_2[i];
-
-            //helical B-field equivalent has to be inside loop below as it depends on R
-
-        }
-
-        //Rotate B-fields along spherical cone surface slightly and also transversify depending on R/R0
-        for (i=0; i<(n_blocks); i++){
-//            Bx_helical[i] = -R*sin(t_helix+phi_helix)*(cos(theta_r[i])+cos(M_PI/2+theta_phi[i])*cos(M_PI/2+theta_phi[i])*(1-cos(theta_r[i])))
-//                            + R*cos(t_helix+phi_helix)*cos(M_PI/2+theta_phi[i])*sin(M_PI/2+theta_phi[i])*(1-cos(theta_r[i]))
-//                            + c_helix*sin(M_PI/2+theta_phi[i])*sin(theta_r[i]);
-//            By_helical[i] = -R*sin(t_helix+phi_helix)*sin(M_PI/2+theta_phi[i])*cos(M_PI/2+theta_phi[i])*(1-cos(theta_r[i]))
-//                            + R*cos(t_helix+phi_helix)*(cos(theta_r[i])+sin(M_PI/2+theta_phi[i])*sin(M_PI/2+theta_phi[i])*(1-cos(theta_r[i])))
-//                            - c_helix*cos(M_PI/2+theta_phi[i])*sin(theta_r[i]);
-//            Bz_helical[i] = R*sin(t_helix+phi_helix)*sin(M_PI/2+theta_phi[i])*sin(theta_r[i])
-//                            + R*cos(t_helix+phi_helix)*cos(M_PI/2+theta_phi[i])*sin(theta_r[i])
-//                            + c_helix*cos(theta_r[i]);
-              Bx_helical[i] = -sin(t_helix+phi_helix) / sqrt(2);
-              By_helical[i] = cos(t_helix+phi_helix) / sqrt(2); //no transversification or cone surface, 45 deg helix
-              Bz_helical[i] = 1 / sqrt(2);
-
-        }
-
-        /*REPLACE READING Bs into python with all STokes in C
-        Now Find matrix of all B_effectives for all zones */
-        if (!EVPA_rotation) {
-            for (i=0; i<(n_blocks); i++) {
-                    BX[i] = (Bz[i]*sin(deg2rad(theta_obs)) + Bx[i]*cos(deg2rad(theta_obs)));
-                    BY[i] = By[i];
-                    BZ[i] = (Bz[i]*cos(deg2rad(theta_obs))-Bx[i]*sin(deg2rad(theta_obs)));
-                    printf("BXBYBZ %.5e\t%.5e\t%.5e\n",BX[i],BY[i],BZ[i]);
-            }
-        } else {
-            for (i=0; i<(n_blocks); i++) {
-                if (i<19){
-                    BX[i] = (Bz_helical[i]*sin(deg2rad(theta_obs)) + Bx_helical[i]*cos(deg2rad(theta_obs)));
-                    BY[i] = By_helical[i];
-                    BZ[i] = (Bz_helical[i]*cos(deg2rad(theta_obs))-Bx_helical[i]*sin(deg2rad(theta_obs)));
-                } else {
-                    BX[i] = (Bz[i]*sin(deg2rad(theta_obs)) + Bx[i]*cos(deg2rad(theta_obs)));
-                    BY[i] = By[i];
-                    BZ[i] = (Bz[i]*cos(deg2rad(theta_obs))-Bx[i]*sin(deg2rad(theta_obs)));
-                }
-
-            }
-        }
-
-        if (!DopDep){
-            for (i=0; i<(n_blocks); i++) {
-                for (l=0; l<n_blocks; l++){
-                    Blength = sqrt(BX[i]*BX[i]+BY[i]*BY[i]+BZ[i]*BZ[i]); //normalization important to get correct z angle
-
-                    B_effectives[l][i][0] = BX[i]/Blength;
-                    B_effectives[l][i][1] = BY[i]/Blength;
-                    B_effectives[l][i][2] = BZ[i]/Blength;
-
-                }
-            }
-        } else {
-            for (i=0; i<(n_blocks); i++) {
-                for (l=0; l<n_blocks; l++){
-                    DD_3Beffective(BX[i],BY[i],BZ[i],
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,B_effectives[l][i]);
-
-                    DD_3Beffective(align[l][i][0],align[l][i][1],align[l][i][2],
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign0[l][i]);
-
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(18.2*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)), //adding cosk offsets
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign1[l][i]);
-                   
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(36.4*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign2[l][i]);
-
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-18.2*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign3[l][i]);
-                    
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-36.4*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign4[l][i]);
-
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(-60*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign5[l][i]);
-                  
-                    DD_3Beffective(align[l][i][0],align[l][i][1], sin(60*M_PI/180) * sqrt(pow(align[l][i][0],2) + pow(align[l][i][1],2)),
-                                cos(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+sin(deg2rad(theta_obs))*cos(theta_r[l]),
-                                sin(theta_r[l])*sin(theta_phi[l]), -sin(deg2rad(theta_obs))*sin(theta_r[l])*cos(theta_phi[l])+cos(deg2rad(theta_obs))*cos(theta_r[l]),
-                                gamma_bulk,unitalign6[l][i]);
-                }
-            }
-        }
-
-//        for (i=0; i<(n_blocks); i++) { //save B-fields for visualization
-//            fprintf(Proj_Bfile,"\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",theta_r[i],theta_phi[i],
-//                    theta_tot[i],atan2(B_1[i],B_0[i]),atan2(By[i],Bx[i]),atan2(By_helical[i],Bx_helical[i]),
-//                    atan2(BY[i],BX[i]),atan2(B_effectives[i][i][1],B_effectives[i][i][0]));
-//        }
 
         //begin with Synchrotron emission
         for (i=0; i<array_size; i++)
@@ -769,16 +774,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         //code to make sure that if non-zero angle LT effect gets too large, to just set subsequent polarized emission to zero
         marker = (int)round(R*tan(deg2rad(theta_obs)) /  (2 * R0 / (sqrt(n_blocks)) ) );
 	printf("MARKER: %d \n", marker);
-        if (marker != marker_prev){
-            if ((marker+1) / (marker_prev+1) > 10) {
-                for (l=0; l<array_size; l++) { // make emission unpolarized whilst conserving total power
-                    P_perp[l] = 0.5 * (P_perp[l] + P_para[l]);
-                    P_para[l] = P_perp[l];
-                }
-                printf("\n WARNING: STRONG Section Mixing! Emission from this point onward will be unpolarized.\n");
-            }
-            marker_prev = marker;
-        }
+//        if (marker != marker_prev){
+//            if ((marker+1) / (marker_prev+1) > 10) {
+//                for (l=0; l<array_size; l++) { // make emission unpolarized whilst conserving total power
+//                    P_perp[l] = 0.5 * (P_perp[l] + P_para[l]);
+//                    P_para[l] = P_perp[l];
+//                }
+//                printf("\n WARNING: STRONG Section Mixing! Emission from this point onward will be unpolarized.\n");
+//            }
+//            marker_prev = marker;
+//        }
         //**************************************************//
 
 
@@ -882,9 +887,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             }
             //printf("alphaef \t%.5e\n",effective_alpha[l]);
             for (g=0; g<n_blocks; g++) { //Sync Stokes Parameters
-                q_theta = pow(sin(acos(B_effectives[g][g][2])),(effective_alpha[l]+1)/2); //factor to account for weaker emission when B_field pointed closer to line of sight
-                S_Stokes[g][l][0] += q_theta*P_perp[l]/n_blocks, S_Stokes[g][l][1] += (q_theta*P_perp[l]/n_blocks)*cos(2*atan2(B_effectives[g][g][0],-B_effectives[g][g][1])), S_Stokes[g][l][2] += (q_theta*P_perp[l]/n_blocks)*sin(2*atan2(B_effectives[g][g][0],-B_effectives[g][g][1]));
-                S_Stokes[g][l][0] += q_theta*P_para[l]/n_blocks, S_Stokes[g][l][1] += (q_theta*P_para[l]/n_blocks)*cos(2*atan2(B_effectives[g][g][1],B_effectives[g][g][0])), S_Stokes[g][l][2] += (q_theta*P_para[l]/n_blocks)*sin(2*atan2(B_effectives[g][g][1],B_effectives[g][g][0]));
+                q_theta = pow(sin(acos(B_effectives[marker_list[g]][g][g][2])),(effective_alpha[l]+1)/2); //factor to account for weaker emission when B_field pointed closer to line of sight
+                S_Stokes[g][l][0] += q_theta*P_perp[l]/n_blocks, S_Stokes[g][l][1] += (q_theta*P_perp[l]/n_blocks)*cos(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1])), S_Stokes[g][l][2] += (q_theta*P_perp[l]/n_blocks)*sin(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1]));
+                S_Stokes[g][l][0] += q_theta*P_para[l]/n_blocks, S_Stokes[g][l][1] += (q_theta*P_para[l]/n_blocks)*cos(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0])), S_Stokes[g][l][2] += (q_theta*P_para[l]/n_blocks)*sin(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0]));
                 //printf("SSStokes123 %.5e\t%.5e\t%.5e\n", S_Stokes[g][l][0],S_Stokes[g][l][1],S_Stokes[g][l][2]);
             }
 
@@ -996,8 +1001,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         for (g=0; g<n_blocks; g++){ //B-fields
             for (h=0; h<n_blocks; h++){ //block locations
-                Btheta = acos(B_effectives[h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
-                zeta = atan(B_effectives[h][g][1]/B_effectives[h][g][0]); //to rotate each Stokes to lab frame
+                Btheta = acos(B_effectives[marker_list[h]][h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
+                zeta = atan(B_effectives[marker_list[h]][h][g][1]/B_effectives[marker_list[h]][h][g][0]); //to rotate each Stokes to lab frame
                 //printf("Btheta [deg] \t%.5e", Btheta*180/M_PI);
 
                 if (h==g){
@@ -1138,6 +1143,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         P_perpIC[n] += Pperpperp + Pperppara;
                                         P_paraIC[n] += Pparaperp + Pparapara;
+                                        if (n == 13) {
+                                            P_X[l] += Pperpperp + Pperppara + Pparaperp + Pparapara;
+                                        }
 
                                         //Ps_per_m_test[i] += Pperpperp + Pperppara + Pparaperp + Pparapara;
                                     }
@@ -1192,6 +1200,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
                                         P_perpIC[n] += Pperpperp + Pperppara;
                                         P_paraIC[n] += Pparaperp + Pparapara;
+                                        if (n == 13) {
+                                            P_X[l] += Pperpperp + Pperppara + Pparaperp + Pparapara;
+                                        }
 
                                         //Ps_per_m_test[i] += Pperpperp + Pperppara + Pparaperp + Pparapara;
                                     }
@@ -1235,9 +1246,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         
         for (i=0; i<array_size; i++) //1.79 //0.85
         {
-            Ps_per_m_IC[i] = 0.0;
+            //Ps_per_m_IC[i] = 0.0;
             Ps_per_mIC_elec[i] = 0.0;
-            Ps_per_m_IC[i] = (P_perpIC[i] + P_paraIC[i]) * dfreqs_polIC[i];
+            //Ps_per_m_IC[i] = (P_perpIC[i] + P_paraIC[i]) * dfreqs_polIC[i];
             //printf("ps %.5e\n", Ps_per_m_IC[i]);
             Ps_per_mIC_elec[i] = (4/3)*6.6524E-29*gamma_e[i]*gamma_e[i]*beta_e[i]*beta_e[i]*dN_dE[i]*dEe[i]*Qe*u_rad; //test for Ps_per_mIC_elec == this
             IC_losses[i] = Ps_per_mIC_elec[i];
@@ -1291,6 +1302,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     IC_StokesTotal[n][0] += IC_Stokes[h][n-binshiftIC][0] * pow(zone_doppler,4) * dx;//(dfreqs_polIC[n-binshiftIC]/dfreqs_polIC[n]) * dx;
                     IC_StokesTotal[n][1] += IC_Stokes[h][n-binshiftIC][1] * pow(zone_doppler,4) * dx;//(dfreqs_polIC[n-binshiftIC]/dfreqs_polIC[n]) * dx;
                     IC_StokesTotal[n][2] += IC_Stokes[h][n-binshiftIC][2] * pow(zone_doppler,4) * dx;//(dfreqs_polIC[n-binshiftIC]/dfreqs_polIC[n]) * dx;
+
+                    IC_StokesZTotal[h][n][0] += IC_Stokes[h][n-binshiftIC][0] * pow(zone_doppler,4) * dx;//(dfreqs_polIC[n-binshiftIC]/dfreqs_polIC[n]) * dx;
+                    IC_StokesZTotal[h][n][1] += IC_Stokes[h][n-binshiftIC][1] * pow(zone_doppler,4) * dx;//(dfreqs_polIC[n-binshiftIC]/dfreqs_polIC[n]) * dx;
+                    IC_StokesZTotal[h][n][2] += IC_Stokes[h][n-binshiftIC][2] * pow(zone_doppler,4) * dx;//(dfreqs_polIC[n-binshiftIC]/dfreqs_polIC[n]) * dx;
+                    
                 }
                 //printf("%.5e\t%.5e\t%.5e\n",IC_StokesTotal[n][0],IC_StokesTotal[n][1],IC_StokesTotal[n][2]);
 
@@ -1299,6 +1315,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     S_StokesTotal[n][0] += S_Stokes[h][n-binshiftS][0] * pow(zone_doppler,4) * dx; //(dfreqs_pol[n-binshiftS]/dfreqs_pol[n]) * dx;
                     S_StokesTotal[n][1] += S_Stokes[h][n-binshiftS][1] * pow(zone_doppler,4) * dx; //(dfreqs_pol[n-binshiftS]/dfreqs_pol[n]) * dx;
                     S_StokesTotal[n][2] += S_Stokes[h][n-binshiftS][2] * pow(zone_doppler,4) * dx; //(dfreqs_pol[n-binshiftS]/dfreqs_pol[n]) * dx;
+
+                    S_StokesZTotal[h][n][0] += S_Stokes[h][n-binshiftS][0] * pow(zone_doppler,4) * dx; //(dfreqs_pol[n-binshiftS]/dfreqs_pol[n]) * dx;
+                    S_StokesZTotal[h][n][1] += S_Stokes[h][n-binshiftS][1] * pow(zone_doppler,4) * dx; //(dfreqs_pol[n-binshiftS]/dfreqs_pol[n]) * dx;
+                    S_StokesZTotal[h][n][2] += S_Stokes[h][n-binshiftS][2] * pow(zone_doppler,4) * dx; //(dfreqs_pol[n-binshiftS]/dfreqs_pol[n]) * dx;
                 }
                 //printf("totALS \t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", S_Stokes[h][n][0],S_Stokes[h][n][1],S_Stokes[h][n][2],IC_Stokes[h][n][0],IC_Stokes[h][n][1],IC_Stokes[h][n][2]);
                 //printf("doppler \t%.5e\n", pow(zone_doppler,4));
@@ -1330,14 +1350,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         for (i=0; i<array_size; i++)
         {
             Ps_per_m[i] *= dx;
-            Ps_per_m_IC[i] *= dx;
+            //Ps_per_m_IC[i] *= dx;
             Sync_losses[i] *= dx;
             IC_losses[i] *= dx;              //ALP
             P_perp[i] *= dx;  //polarisation powers
             P_para[i] *= dx;
-            //P_perpIC[i] *= dx;
-            //P_paraIC[i] *= dx;
+            P_perpIC[i] *= dx;
+            P_paraIC[i] *= dx;
+            P_X[i] *= dx;
 	       // fprintf(jfile, "\t%.5e", j[i]);
+	    //fprintf(Xfile,"\t%.5e", P_X[i] * f_pol[i]);
             //fprintf(freqfile, "\t%.5e", f_c[i]); //these are Doppler boosted later
             //fprintf(opfile, "\t%.5e", k[i]);//*(R/R_prev)*(R/R_prev));
             //fprintf(powfile, "\t%.5e", Ps_per_m[i]*pow(doppler_factor, 4.0));//*pow((doppler(beta_e[i], deg2rad(theta_obs))), 4.0));//*Ne_e[i]);
@@ -1351,7 +1373,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //fprintf(betadata, "\t%.5e", beta_e[i]);
 
             if (i==array_size-1) //puts the outputs for the next jet section on a new line in files
-            {
+            {  
+               //fprintf(Xfile,"\n");
+
                 //fprintf(freqfile, "\n");
                 //fprintf(opfile, "\n");
         		//fprintf(jfile, "\n");
@@ -1444,8 +1468,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
             P_para[i] = 0.0;//Reset
             P_perp[i] = 0.0;
-            //P_paraIC[i] = 0.0;
-            //P_perpIC[i] = 0.0;
+            P_paraIC[i] = 0.0;
+            P_perpIC[i] = 0.0;
+            P_X[i] = 0.0;
             Ps_per_mIC_elec[i] = 0.0;
             Ps_per_m_elec[i] = 0.0;
 
@@ -1549,6 +1574,32 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         S_StokesTotal[n][0] *= f_pol[n];
         S_StokesTotal[n][1] *= f_pol[n];
         S_StokesTotal[n][2] *= f_pol[n];
+
+        for (h=0; h<n_blocks; h++){
+             IC_StokesZTotal[h][n][0] *= f_pol_IC[n];
+             IC_StokesZTotal[h][n][1] *= f_pol_IC[n];
+             IC_StokesZTotal[h][n][2] *= f_pol_IC[n];
+
+             S_StokesZTotal[h][n][0] *= f_pol[n];
+             S_StokesZTotal[h][n][1] *= f_pol[n];
+             S_StokesZTotal[h][n][2] *= f_pol[n];
+        }
+    }
+
+    for (i = 0; i < n_blocks; i++)
+    {
+      for (m = 0; m < array_size; m++)
+      {
+        for (n = 0; n < 3; n++)
+        {
+          fprintf(IC_Z, "%f ", IC_StokesZTotal[i][m][n]);
+          fprintf(S_Z, "%f ", S_StokesZTotal[i][m][n]);
+        }
+        fprintf(IC_Z, "\n");
+        fprintf(S_Z, "\n");
+      }
+      fprintf(IC_Z, "\n");
+      fprintf(S_Z, "\n");
     }
 
 

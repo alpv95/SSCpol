@@ -12,8 +12,12 @@ n_blocks = sys.argv[2]
 n_rings = sys.argv[3]
 nsteps = sys.argv[4]
 n_workers = sys.argv[5]
+theta_obs = sys.argv[6]
 
-results_dir = "nbloc" + n_blocks + "_" + nsteps
+
+p = subprocess.check_call(['cd','/home/groups/kipac/alpv95/Romani_theta'])
+results_dir = "final" + theta_obs + "_" + n_blocks + "_" + nsteps
+#results_dir = "X"
 try:
     # Create results Directory
     os.mkdir(results_dir)
@@ -21,10 +25,10 @@ try:
 except FileExistsError:
     print("Directory ", results_dir,  " already exists")
 
-subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm'])
+#subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm'])
 
 q = multiprocessing.Queue()
-inputs = [(0,i,1,1.5, n_blocks, n_rings, task_id, nsteps, results_dir) for i in range(int(n_workers))] #these are saved in keyparams along with more
+inputs = [(0,i,1,theta_obs, n_blocks, n_rings, task_id, nsteps, results_dir) for i in range(int(n_workers))] #these are saved in keyparams along with more
 
 for inpt in inputs:
   q.put(inpt)
@@ -36,6 +40,7 @@ def worker():
       return
     print("task_id: ",task_id," thread_id: " ,inpt[1])
     #time.sleep(0.1)
+    p = subprocess.check_call(['cd','/home/groups/kipac/alpv95/Romani_theta'])
     p = subprocess.check_call(['srun','--ntasks=1','--output=' + results_dir + '/task' + task_id + '_' + str(inpt[1]) + '.out','./a.out', str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6]),str(inpt[7]),str(inpt[8])])
     #checksum = collect_md5_result_for(fileName)
     #result[fileName] = checksum  # store it
