@@ -4,7 +4,7 @@ import subprocess
 import sys
 import junk
 
-subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h'])
+subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm'])
 for i in range(1):
     EVPA_rotation = 0
     theta_obs = 1.5
@@ -32,8 +32,8 @@ for i in range(1):
     # else:
     #     n_blocks = 127
     #     n_rings = 6
-    n_blocks = 19
-    n_rings = 2
+    n_blocks = 1
+    n_rings = 0
 
     subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD),str(theta_obs),str(n_blocks),str(n_rings)])
     junk.plot_SED("TESTFIL2.txt")

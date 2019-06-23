@@ -59,8 +59,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
     //define radius at jet base
-    R0 = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);//7.32E13;
-    R = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);//7.32E13;
+    R0 = R_0(W_j*(3.0/4.0), 3.0, gamma_bulk, B0);//7.32E13;
+    R = R_0(W_j*(3.0/4.0), 3.0, gamma_bulk, B0);//7.32E13;
     printf("Radius at jet base: %.5e \n", R);
 
     //read in any required data (only Bessel Functions for now)
@@ -259,7 +259,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
     //print the energies to test equipartition
-    UB_jetbase = (4.0/3.0)*M_PI*R0*R0*C*B0*B0/(2*4*M_PI*1E-7);
+    UB_jetbase = 4.0*M_PI*R0*R0*C*B0*B0/(2*4*M_PI*1E-7);
     //printf("Obs power, particles, B-fields: %.5e\t%.5e\t%.5e\t%.5e \n", W_j/(gamma_bulk*gamma_bulk), Ue_jetbase, UB_jetbase, Ue_jetbase+UB_jetbase);
     
     //redefine electron population to ensure equipartition
@@ -474,10 +474,19 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //B_effectives due to RPAR for each zone in every other zone
     double B_effectives[n_blocks][n_blocks][3];
     memset(B_effectives, 0, sizeof(B_effectives[0][0][0])* n_blocks * n_blocks * 3);
+    double U_E;
 
     printf("Beginning jet analysis... \n");
     while (x<L_jet)//for (x=0; x<L_jet; x+=dx)
     {
+        U_E = 0.0;
+        for (i=0; i<(array_size); i++){
+            U_E += Ne_e[i] * E_elecs[i] * Qe;
+        }
+
+        printf("A_equipartition = %lf \n", (R*R * C * B*B / (2*1E-7)) / U_E );
+        printf("UB0/UB = %lf \n", UB_jetbase/(R*R * C * B*B / (2*1E-7)));
+        printf("UE0/UE = %lf \n", Ue_jetbase/U_E);
         //update jet parameters
         eps = epsilon(B);//same for all populations
 	    //printf("x, R, B; %.5e\t%.5e\t%.5e\n", x, R, B); //matches
