@@ -42,13 +42,18 @@ for i in range(args.nworkers):
 #plot results
 junk.plot_SED(args.dir + "/pi0_0.txt",args.dir + "/keyparams0_0.txt",args.dir + "/freqrange0_0.txt")
 
-#then run this once all workers have finished
+#then run this once all workers have finished, useful if nworkers > 1
 subprocess.check_call('cat ' + args.dir + '/pi' + str(task_id) + '_* > ' + args.dir + '/pi' + str(args.theta_obs) + '.txt', shell=True) #combine all the output fil    es in order of inputs
 subprocess.check_call('cat ' + args.dir + '/basicdata' + str(task_id) + '_* > ' + args.dir + '/basicdata'+ str(args.theta_obs) +'.txt',shell=True)
 subprocess.check_call('cat ' + args.dir + '/freqrange' + str(task_id) + '_* > ' + args.dir + '/freqrange'+ str(args.theta_obs) +'.txt',shell=True)
 subprocess.check_call('cat ' + args.dir + '/keyparams' + str(task_id) + '_* > ' + args.dir + '/keyparams'+ str(args.theta_obs) +'.txt',shell=True) 
+subprocess.check_call('cat ' + args.dir + '/IC_Z' + str(task_id) + '_* > ' + args.dir + '/IC_Z'+ str(args.theta_obs) +'.txt',shell=True) 
+subprocess.check_call('cat ' + args.dir + '/S_Z' + str(task_id) + '_* > ' + args.dir + '/S_Z'+ str(args.theta_obs) +'.txt',shell=True) 
+
 subprocess.check_call('rm ' + args.dir + '/pi' + str(task_id) + '_*',shell=True) #delete files after concat
 subprocess.check_call('rm ' + args.dir + '/basicdata' + str(task_id) + '_*',shell=True)
 subprocess.check_call('rm ' + args.dir + '/freqrange' + str(task_id) + '_*',shell=True)
 subprocess.check_call('rm ' + args.dir + '/keyparams' + str(task_id) + '_*',shell=True)
+subprocess.check_call('rm ' + args.dir + '/IC_Z' + str(task_id) + '_*',shell=True)
+subprocess.check_call('rm ' + args.dir + '/S_Z' + str(task_id) + '_*',shell=True)
 
