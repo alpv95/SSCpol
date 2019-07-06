@@ -25,7 +25,7 @@ n_rings =[0,1,2,3,4,5,6][[1,7,19,37,64,91,127].index(args.nblocks)] #rings fixed
 task_id = 0 #for multiprocessing
 ############################################################
 
-subprocess.call(['gcc', 'jet_synconlyALPWFlux.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm']) #Compile C
+subprocess.call(['gcc','jet_model.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm']) #Compile C
 inpts = [(0,i,1,args.theta_obs, args.nblocks, n_rings, task_id, args.nsteps, args.dir, int(args.SSC)) for i in range(args.nworkers)]
 
 try:

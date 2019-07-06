@@ -932,7 +932,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                                     else if (F_min*(Me_EV) > E_elecs[0]) {
                                         for (o=0; o<ARRAY_SIZE; o++){ //find Fmin location in E_elecs
                                             if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
-                                            break;
+                                               break;
                                             }
                                         }
 
