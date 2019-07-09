@@ -672,7 +672,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                        }
                     }
                 }
-                printf("i, zone_marker = %d \t  %d \n", i, marker_list[i]);
+                //printf("i, zone_marker = %d \t  %d \n", i, marker_list[i]);
             }
            printf("\n WARNING: Section Mixing has begun! \n");
         }
@@ -858,7 +858,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
         //********************************************** ALP SSC losses *******************************************//
-        //XXX: given energy density prescription do we need 1/nblocks in Pperpperp etc? I think maybe not (will only affect SSC SED height)
+        //XXX: given energy density prescription do we need 1/nblocks in Pperpperp etc? Yes, still do because Pperp_array uses full electron pop power
 
         if (SSC){
 
