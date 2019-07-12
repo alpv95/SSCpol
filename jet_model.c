@@ -522,7 +522,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     int marker_list[N_BLOCKS];
     for (n=0; n<N_BLOCKS; n++) {
         marker_list[n] = nLT_sections / 2;
-        printf("marker_list init = %d", marker_list[n]);
+        //printf("marker_list init = %d", marker_list[n]);
     }
 
     double B_0[nLT_sections][N_BLOCKS];
@@ -557,7 +557,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                      BX[l][i] = (B_2[l][i]*sin(deg2rad(theta_obs)) + B_0[l][i]*cos(deg2rad(theta_obs)));
                      BY[l][i] = B_1[l][i];
                      BZ[l][i] = (B_2[l][i]*cos(deg2rad(theta_obs))-B_0[l][i]*sin(deg2rad(theta_obs)));
-                     printf("BXBYBZ %d\t%d\t%.5e\t%.5e\t%.5e\n",l,i,BX[l][i],BY[l][i],BZ[l][i]);
+                     //printf("BXBYBZ %d\t%d\t%.5e\t%.5e\t%.5e\n",l,i,BX[l][i],BY[l][i],BZ[l][i]);
              }
         }
     } else {
@@ -916,7 +916,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         // Find marker for LT section mixing
         marker = (int)round(R*tan(deg2rad(theta_obs)) /  (2 * R0 / (sqrt(N_BLOCKS)) ) );
-	printf("MARKER: %d \n", marker);
+	    //printf("MARKER: %d \n", marker);
 
         //some code to estimate what dx early for energy density calcultion, based off sync losses only, ok if IC losses not too big, early jet
         dx_set = findminelementNO0(Ne_e, ARRAY_SIZE);//gets the lowest non_zero element. Higher energy electrons radiate more rapidly
@@ -1127,8 +1127,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             binshiftIC = (int)round(log10(zone_doppler/doppler_factor)/logdif); //the number of bins one moves across (relative to shift of bins which already takes place)
             logdif = log10(f_pol[1])-log10(f_pol[0]);
             binshiftS = (int)round(log10(zone_doppler/doppler_factor)/logdif);
-            printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
-            printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
+            //printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
+            //printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
 
             for (n=0; n<ARRAY_SIZE; n++){
                 // Might want zone_doppler ^ 3 for a continuous jet
@@ -1251,7 +1251,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         memset(dfactor_para, 0, sizeof(dfactor_para[0][0][0])* N_BLOCKS * N_BLOCKS * ARRAY_SIZE);
 
         nSteps+=1; //allows the number of jet sections to be determined
-        printf("nStep, dx, x, B, R %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
+        printf("nStep, dx, x, B, R: %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
 
         //save data needed at every jet section to solve line of sight opacity
         fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
