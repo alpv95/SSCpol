@@ -1,4 +1,4 @@
-# SSC Fast:
+# SSC Fast
 Sped up version of SSC_final using the magic of linear algebra. Requires GSL C library (can be download and installation instructions here: https://www.gnu.org/software/gsl/). 
 
 # Synchrotron and SSC Polarization of Blazars
