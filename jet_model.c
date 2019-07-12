@@ -12,6 +12,11 @@
 #include "jet_fns.h"
 #include "mtwister.h" //random number generation
 #include <time.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_cblas.h>
+
 
 #define Me_EV 0.511E6 //electron rest energy
 #define C 3.0E8 //speed of light
@@ -434,7 +439,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
     //Full and zonal Stokes vector bins for Synchrotron and IC respectively
-    double S_Stokes[N_BLOCKS][ARRAY_SIZE][3];
+    double S_Stokes[N_BLOCKS][3][ARRAY_SIZE];
     memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
     double S_StokesTotal[ARRAY_SIZE][3];
     memset(S_StokesTotal, 0, sizeof(S_StokesTotal[0][0])* ARRAY_SIZE * 3);
@@ -447,8 +452,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double ICS_StokesTotal[ARRAY_SIZE][3];
     memset(ICS_StokesTotal, 0, sizeof(ICS_StokesTotal[0][0])* ARRAY_SIZE * 3);
 
-    double IC_Stokes[N_BLOCKS][ARRAY_SIZE][3];
-    memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
+    //double IC_Stokes[N_BLOCKS][3][ARRAY_SIZE];
+    //memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
     double IC_StokesTotal[ARRAY_SIZE][3];
     memset(IC_StokesTotal, 0, sizeof(IC_StokesTotal[0][0])* ARRAY_SIZE * 3);
 
@@ -475,7 +480,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     int binshiftS;
     double dfactor;
 
-    double X = 0.0;
+    //double X = 0.0;
     double KN = 1.0; //klein nishina factor
     double v_k[3] = {0}; //incoming photon vector
     double e_k[3] = {0}; //incoming polarization vector perpendicular to B
@@ -631,11 +636,212 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
     }
 
-//        for (i=0; i<(N_BLOCKS); i++) { //save B-fields for visualization
-//            fprintf(Proj_Bfile,"\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",theta_r[i],theta_phi[i],
-//                    theta_tot[i],atan2(B_1[i],B_0[i]),atan2(By[i],Bx[i]),atan2(By_helical[i],Bx_helical[i]),
-//                    atan2(BY[i],BX[i]),atan2(B_effectives[i][i][1],B_effectives[i][i][0]));
+    //Linear Algebra Speedup using BLAS and GSL libraries: write SSC integral as y = Ax, code below finds A
+
+    for (l=0; l<ARRAY_SIZE; l++){
+        //P_para[l] = 0.2*P_perp[l];
+        //make alpha dependent on frequency here
+        if (l == 0){
+           effective_alpha[l] = -(log10(dN_dE[l+1]) - log10(dN_dE[l]))/(log10(E_elecs[l+1]*Qe) - log10(E_elecs[l]*Qe));
+        } else if (l > ARRAY_SIZE - 2) {
+            effective_alpha[l] = -(log10(dN_dE[l]) - log10(dN_dE[l-1]))/(log10(E_elecs[l]*Qe) - log10(E_elecs[l-1]*Qe));
+        } else {
+            effective_alpha[l] = -(log10(dN_dE[l+1]) - log10(dN_dE[l-1]))/(log10(E_elecs[l+1]*Qe) - log10(E_elecs[l-1]*Qe));
+        }
+        if (isnan(effective_alpha[l]) || isinf(effective_alpha[l])) {
+            effective_alpha[l] = 8.41283e+01;
+        }
+    }
+
+    gsl_vector * X[N_BLOCKS];
+    gsl_matrix * A[N_BLOCKS][3];
+    gsl_vector * IC_Stokes[N_BLOCKS][3];
+
+    for (h=0; h<N_BLOCKS; h++){
+         X[h] = gsl_vector_alloc(ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);//perp and para concatenated
+
+         A[h][0] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2); //one for each stokes parameter
+         A[h][1] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
+         A[h][2] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
+
+         IC_Stokes[h][0] = gsl_vector_alloc(ARRAY_SIZE);
+         IC_Stokes[h][1] = gsl_vector_alloc(ARRAY_SIZE);
+         IC_Stokes[h][2] = gsl_vector_alloc(ARRAY_SIZE);
+    }
+
+
+    if (SSC){
+//        for (h=0; h<N_BLOCKS; h++){
+//             X[h] = gsl_vector_calloc(ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);//perp and para concatenated
+//
+//             A[h][0] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2); //one for each stokes parameter
+//             A[h][1] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
+//             A[h][2] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
+//
+//             IC_Stokes[h][0] = gsl_vector_alloc(ARRAY_SIZE);
+//             IC_Stokes[h][1] = gsl_vector_alloc(ARRAY_SIZE);
+//             IC_Stokes[h][2] = gsl_vector_alloc(ARRAY_SIZE);
 //        }
+
+        for (g=0; g<N_BLOCKS; g++){ //B-fields
+            for (h=0; h<N_BLOCKS; h++){ //block locations
+                Btheta = acos(B_effectives[marker_list[h]][h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
+                zeta = atan(B_effectives[marker_list[h]][h][g][1]/B_effectives[marker_list[h]][h][g][0]); //to rotate each Stokes to lab frame
+
+                if (h==g){
+                    phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
+                    //rotate to B_effective
+                    ang_factor = 1; //adjust so total IC power always the same
+
+                } else if (h!=g) {
+                    //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
+                    //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
+                    cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
+                    cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
+                    cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
+                    cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
+                    cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
+                    cosk_single[5] = unitalign5[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[5] = atan2(unitalign5[h][g][0]*sin(-zeta) + unitalign5[h][g][1]*cos(-zeta), unitalign5[h][g][0]*cos(-zeta) - unitalign5[h][g][1]*sin(-zeta));
+                    cosk_single[6] = unitalign6[h][g][2]; //z component isnt affected by -zeta rotation
+                    phik_single[6] = atan2(unitalign6[h][g][0]*sin(-zeta) + unitalign6[h][g][1]*cos(-zeta), unitalign6[h][g][0]*cos(-zeta) - unitalign6[h][g][1]*sin(-zeta));
+
+        	    for (n=0; n<7; n++){
+                        cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
+                        phik_list[n] = findClosest(phik, phik_single[n], 10);
+                        //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
+                    }
+                    cosk_start = 0, cosk_end = 7;
+                    phik_start = 0, phik_end = 1;
+                    ang_factor = 14.3; //ie 20*5 = 100 = size(phik) * size(cosk)
+
+                } else {
+                  continue;
+                }
+
+                for (n=0; n<ARRAY_SIZE; n++){  //f_polIC (compton energy)
+                    for (l=0; l<ARRAY_SIZE; l++){ //f_pol (sync energy)
+                        for (p=phik_start; p<phik_end; p++){ //phi
+                            for (m=cosk_start; m<cosk_end; m++){ //cosk
+                                nn = m;
+                                if (h != g) {
+                                   p = phik_list[nn];
+                                   m = cosk_list[nn];
+                                }
+                                F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
+                                v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
+                                e_k[0] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta);
+                                e_k[1] = sin(Btheta)*cosk[m] - cos(Btheta)*sqrt(1-cosk[m]*cosk[m])*cos(phik[p]); //incoming photon polarization vector (perp)
+                                e_k[2] = -sin(Btheta)*sqrt(1-cosk[m]*cosk[m])*sin(phik[p]);
+                                //this is just cross product of e_k and v_k above
+                                e_kpara[0] = pow(cosk[m],2)*sin(Btheta) - cos(Btheta)*cos(phik[p])*cosk[m]*sqrt(1-cosk[m]*cosk[m]) + (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*sin(Btheta),
+                                e_kpara[1] = -sin(Btheta)*(1-cosk[m]*cosk[m])*sin(2*phik[p])/2 - cosk[m]*sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta), //incoming photon polarization vector (para)
+                                e_kpara[2] = (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*cos(Btheta) - sqrt(1-cosk[m]*cosk[m])*cos(phik[p])*sin(Btheta)*cosk[m] + (1-cosk[m]*cosk[m])*pow(cos(phik[p]),2)*cos(Btheta);
+                                //e_k above is not normalised
+                                q_theta = pow(1-pow(cos(Btheta)*cosk[m]+sin(Btheta)*cos(phik[p])*sqrt(1-cosk[m]*cosk[m]),2),(effective_alpha[l]+1)/4);
+
+                                if (F_min*(Me_EV) > E_elecs[ARRAY_SIZE-1]) {
+                                    P_perpIC[n] += 0.0;
+                                    P_paraIC[n] += 0.0;
+                                }
+
+                                else if (F_min*(Me_EV) > E_elecs[0]) {
+                                    for (o=0; o<ARRAY_SIZE; o++){ //find Fmin location in E_elecs
+                                        if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
+                                           break;
+                                        }
+                                    }
+
+                                    for (i=o; i<ARRAY_SIZE; i++){ //E_e
+                                        //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
+
+                                        Pperpperp = 3.95417e-103 * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
+                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) );
+                                        //printf("Pperperp %.5e\n", Pperpperp);
+
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ); 
+
+
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ); 
+
+
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ); 
+
+                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2)+ (Pparapara/(N_BLOCKS)) + (Pperppara/(N_BLOCKS)));
+                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS)) + (Pperpperp/(N_BLOCKS)));
+                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+
+
+                                    }
+                                }
+
+                                else {
+                                    for (i=0; i<ARRAY_SIZE; i++){ //E_e
+                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
+                                        *KN; 
+
+                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
+                                        *KN; 
+
+
+                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
+                                        *KN;
+                                        //printf("Pparaperp %.5e\n", Pparaperp);
+
+                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
+                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
+                                        *KN; 
+
+                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS)) + (Pperppara/(N_BLOCKS)));
+                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS)) + (Pperpperp/(N_BLOCKS)));
+                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
+
+                                    }
+                                }
+
+                                if (h != g) {
+                                   m = nn;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
 
 
     // Actual Jet emission calculation loop
@@ -811,8 +1017,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //printf("alphaef \t%.5e\n",effective_alpha[l]);
             for (g=0; g<N_BLOCKS; g++) { //Sync Stokes Parameters
                 q_theta = pow(sin(acos(B_effectives[marker_list[g]][g][g][2])),(effective_alpha[l]+1)/2); //factor to account for weaker emission when B_field pointed closer to line of sight
-                S_Stokes[g][l][0] += q_theta*P_perp[l]/N_BLOCKS, S_Stokes[g][l][1] += (q_theta*P_perp[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1])), S_Stokes[g][l][2] += (q_theta*P_perp[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1]));
-                S_Stokes[g][l][0] += q_theta*P_para[l]/N_BLOCKS, S_Stokes[g][l][1] += (q_theta*P_para[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0])), S_Stokes[g][l][2] += (q_theta*P_para[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0]));
+                S_Stokes[g][0][l] += q_theta*P_perp[l]/N_BLOCKS, S_Stokes[g][1][l] += (q_theta*P_perp[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1])), S_Stokes[g][2][l] += (q_theta*P_perp[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1]));
+                S_Stokes[g][0][l] += q_theta*P_para[l]/N_BLOCKS, S_Stokes[g][1][l] += (q_theta*P_para[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0])), S_Stokes[g][2][l] += (q_theta*P_para[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0]));
                 //printf("SSStokes123 %.5e\t%.5e\t%.5e\n", S_Stokes[g][l][0],S_Stokes[g][l][1],S_Stokes[g][l][2]);
             }
 
@@ -858,178 +1064,33 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
         //********************************************** ALP SSC losses *******************************************//
-        //XXX: given energy density prescription do we need 1/nblocks in Pperpperp etc? Yes, still do because Pperp_array uses full electron pop power
-
-        if (SSC){
-
-            for (g=0; g<N_BLOCKS; g++){ //B-fields
-                for (h=0; h<N_BLOCKS; h++){ //block locations
-                    Btheta = acos(B_effectives[marker_list[h]][h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
-                    zeta = atan(B_effectives[marker_list[h]][h][g][1]/B_effectives[marker_list[h]][h][g][0]); //to rotate each Stokes to lab frame
-
-                    if (h==g){
-                        phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
-                        //rotate to B_effective
-                        ang_factor = 1; //adjust so total IC power always the same
-
-                    } else if (h!=g && dfactor_perp[h][g][0] != 0) {
-                        //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
-                        //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
-                        cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
-                        cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
-                        cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
-                        cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
-                        cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
-                        cosk_single[5] = unitalign5[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[5] = atan2(unitalign5[h][g][0]*sin(-zeta) + unitalign5[h][g][1]*cos(-zeta), unitalign5[h][g][0]*cos(-zeta) - unitalign5[h][g][1]*sin(-zeta));
-                        cosk_single[6] = unitalign6[h][g][2]; //z component isnt affected by -zeta rotation
-                        phik_single[6] = atan2(unitalign6[h][g][0]*sin(-zeta) + unitalign6[h][g][1]*cos(-zeta), unitalign6[h][g][0]*cos(-zeta) - unitalign6[h][g][1]*sin(-zeta));
-
-	    	    for (n=0; n<7; n++){
-                            cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
-                            phik_list[n] = findClosest(phik, phik_single[n], 10);
-                            //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
-                        }
-                        cosk_start = 0, cosk_end = 7;
-                        phik_start = 0, phik_end = 1;
-                        ang_factor = 14.3; //ie 20*5 = 100 = size(phik) * size(cosk)
-
-                    } else {
-                      continue;
-                    }
-
-                    for (n=0; n<ARRAY_SIZE; n++){  //f_polIC (compton energy)
-                        for (l=0; l<ARRAY_SIZE; l++){ //f_pol (sync energy)
-                            for (p=phik_start; p<phik_end; p++){ //phi
-                                for (m=cosk_start; m<cosk_end; m++){ //cosk
-                                    nn = m;
-                                    if (h != g) {
-                                       p = phik_list[nn];
-                                       m = cosk_list[nn];
-                                    }
-                                    F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
-                                    v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
-                                    e_k[0] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta);
-                                    e_k[1] = sin(Btheta)*cosk[m] - cos(Btheta)*sqrt(1-cosk[m]*cosk[m])*cos(phik[p]); //incoming photon polarization vector (perp)
-                                    e_k[2] = -sin(Btheta)*sqrt(1-cosk[m]*cosk[m])*sin(phik[p]);
-                                    //this is just cross product of e_k and v_k above
-                                    e_kpara[0] = pow(cosk[m],2)*sin(Btheta) - cos(Btheta)*cos(phik[p])*cosk[m]*sqrt(1-cosk[m]*cosk[m]) + (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*sin(Btheta),
-                                    e_kpara[1] = -sin(Btheta)*(1-cosk[m]*cosk[m])*sin(2*phik[p])/2 - cosk[m]*sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta), //incoming photon polarization vector (para)
-                                    e_kpara[2] = (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*cos(Btheta) - sqrt(1-cosk[m]*cosk[m])*cos(phik[p])*sin(Btheta)*cosk[m] + (1-cosk[m]*cosk[m])*pow(cos(phik[p]),2)*cos(Btheta);
-                                    //e_k above is not normalised
-                                    q_theta = pow(1-pow(cos(Btheta)*cosk[m]+sin(Btheta)*cos(phik[p])*sqrt(1-cosk[m]*cosk[m]),2),(effective_alpha[l]+1)/4);
-
-                                    if (F_min*(Me_EV) > E_elecs[ARRAY_SIZE-1]) {
-                                        P_perpIC[n] += 0.0;
-                                        P_paraIC[n] += 0.0;
-                                    }
-
-                                    else if (F_min*(Me_EV) > E_elecs[0]) {
-                                        for (o=0; o<ARRAY_SIZE; o++){ //find Fmin location in E_elecs
-                                            if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
-                                               break;
-                                            }
-                                        }
-
-                                        for (i=o; i<ARRAY_SIZE; i++){ //E_e
-                                            //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
-
-                                            Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
-                                            * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pperpperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-
-                                            Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pperppara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-                                            
-
-                                            Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pparaperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-
-                                            
-
-                                            Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pparapara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-
-                                            P_perpIC[n] += Pperpperp + Pperppara;
-                                            P_paraIC[n] += Pparaperp + Pparapara;
-                                            if (n == 13) {
-                                                P_X[l] += Pperpperp + Pperppara + Pparaperp + Pparapara;
-                                            }
-                                        }
-                                    }
-
-                                    else {
-                                        for (i=0; i<ARRAY_SIZE; i++){ //E_e
-                                            Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pperpperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-
-                                            Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pperppara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-                                            
-
-                                            Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pparaperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-
-                                            
-
-                                            Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                            * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
-                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
-                                            *KN; 
-                                            
-                                            IC_Stokes[h][n][0] += (Pparapara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
-
-                                            P_perpIC[n] += Pperpperp + Pperppara;
-                                            P_paraIC[n] += Pparaperp + Pparapara;
-                                            if (n == 13) {
-                                                P_X[l] += Pperpperp + Pperppara + Pparaperp + Pparapara;
-                                            }
-
-                                        }
-                                    }
-
-                                    if (h != g) {
-                                       m = nn;
-                                    }
-                                }
-                            }
+        // given energy density prescription do we need 1/nblocks in Pperpperp etc? Yes, still do because Pperp_array uses full electron pop power
+        if (SSC) {
+            for (h=0; h<N_BLOCKS; h++){ //B-fields
+                for (g=0; g<N_BLOCKS; g++){ //B-fields
+                    for (l=0; l<ARRAY_SIZE; l++){ //block locations/
+                        for (i=0; i<ARRAY_SIZE; i++){ //block locations
+                            gsl_vector_set(X[h], (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, dN_dE[i] * dfactor_perp[h][g][l]);
+                            gsl_vector_set(X[h], (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, dN_dE[i] * dfactor_para[h][g][l]);
                         }
                     }
                 }
             }
+
+            for (h=0; h<N_BLOCKS; h++){
+                gsl_blas_dgemv(CblasNoTrans, 1, A[h][0], X[h], 0, IC_Stokes[h][0]);
+                gsl_blas_dgemv(CblasNoTrans, 1, A[h][1], X[h], 0, IC_Stokes[h][1]);
+                gsl_blas_dgemv(CblasNoTrans, 1, A[h][2], X[h], 0, IC_Stokes[h][2]);
+            }
         }
+
+
+
+
+
+
+
+
 
         for (i=0; i<ARRAY_SIZE; i++){
             for (n=0; n<N_BLOCKS; n++)
@@ -1072,23 +1133,23 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             for (n=0; n<ARRAY_SIZE; n++){
                 // Might want zone_doppler ^ 3 for a continuous jet
                 if (n-binshiftIC >= 0 && n-binshiftIC < ARRAY_SIZE){
-                    IC_StokesTotal[n][0] += IC_Stokes[h][n-binshiftIC][0] * pow(zone_doppler,4) * dx;
-                    IC_StokesTotal[n][1] += IC_Stokes[h][n-binshiftIC][1] * pow(zone_doppler,4) * dx;
-                    IC_StokesTotal[n][2] += IC_Stokes[h][n-binshiftIC][2] * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n][0] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n][1] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n][2] += gsl_vector_get(IC_Stokes[h][2], n-binshiftIC) * pow(zone_doppler,4) * dx;
 
-                    IC_StokesZTotal[h][n][0] += IC_Stokes[h][n-binshiftIC][0] * pow(zone_doppler,4) * dx;
-                    IC_StokesZTotal[h][n][1] += IC_Stokes[h][n-binshiftIC][1] * pow(zone_doppler,4) * dx;
-                    IC_StokesZTotal[h][n][2] += IC_Stokes[h][n-binshiftIC][2] * pow(zone_doppler,4) * dx;
+                    IC_StokesZTotal[h][n][0] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesZTotal[h][n][1] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesZTotal[h][n][2] += gsl_vector_get(IC_Stokes[h][2], n-binshiftIC) * pow(zone_doppler,4) * dx;
                     
                 }
                 if (n-binshiftS >= 0 && n-binshiftS < ARRAY_SIZE){
-                    S_StokesTotal[n][0] += S_Stokes[h][n-binshiftS][0] * pow(zone_doppler,4) * dx; 
-                    S_StokesTotal[n][1] += S_Stokes[h][n-binshiftS][1] * pow(zone_doppler,4) * dx; 
-                    S_StokesTotal[n][2] += S_Stokes[h][n-binshiftS][2] * pow(zone_doppler,4) * dx; 
+                    S_StokesTotal[n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * dx; 
+                    S_StokesTotal[n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * dx; 
+                    S_StokesTotal[n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * dx; 
 
-                    S_StokesZTotal[h][n][0] += S_Stokes[h][n-binshiftS][0] * pow(zone_doppler,4) * dx; 
-                    S_StokesZTotal[h][n][1] += S_Stokes[h][n-binshiftS][1] * pow(zone_doppler,4) * dx; 
-                    S_StokesZTotal[h][n][2] += S_Stokes[h][n-binshiftS][2] * pow(zone_doppler,4) * dx; 
+                    S_StokesZTotal[h][n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * dx; 
+                    S_StokesZTotal[h][n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * dx; 
+                    S_StokesZTotal[h][n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * dx; 
                 }
             }
         }
@@ -1178,7 +1239,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
 
         memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3); //reset these to 0 for next section
-        memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
+        //memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
+        for (h=0; h<N_BLOCKS; h++){
+            gsl_vector_set_zero(IC_Stokes[h][0]);
+            gsl_vector_set_zero(IC_Stokes[h][1]);
+            gsl_vector_set_zero(IC_Stokes[h][2]);
+        }
         memset(urad_array_perp, 0, sizeof(urad_array_perp[0][0])* N_BLOCKS * ARRAY_SIZE); //reset these to 0 for next section
         memset(urad_array_para, 0, sizeof(urad_array_para[0][0])* N_BLOCKS * ARRAY_SIZE);
         memset(dfactor_perp, 0, sizeof(dfactor_perp[0][0][0])* N_BLOCKS * N_BLOCKS * ARRAY_SIZE); //reset these to 0 for next section
