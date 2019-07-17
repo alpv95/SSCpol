@@ -7,7 +7,7 @@ import argparse
 
 #Command Line argument Parsing: ###########################
 parser = argparse.ArgumentParser()
-parser.add_argument('--nblocks', type=int, default=1, choices=[1,7,19,37,64,91,127],
+parser.add_argument('--nblocks', type=int, default=1, choices=[1,7,19,37,61,91,127],
                     help='number of blocks in jet model, default=1')
 parser.add_argument('--nsteps', type=int, default=100,
                     help='number of jet calculation steps, default=100')
@@ -21,7 +21,7 @@ parser.add_argument('-d','--dir', default="workdir",
                     help='results directory, default=workdir')
 args = parser.parse_args()
 
-n_rings =[0,1,2,3,4,5,6][[1,7,19,37,64,91,127].index(args.nblocks)] #rings fixed by number of blocks
+n_rings =[0,1,2,3,4,5,6][[1,7,19,37,61,91,127].index(args.nblocks)] #rings fixed by number of blocks
 task_id = 0 #for multiprocessing
 ############################################################
 
