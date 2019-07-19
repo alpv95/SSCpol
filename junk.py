@@ -46,6 +46,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
     #BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
     #Mkn501_pts = np.loadtxt('MKN501.txt')
     #Mkn421_pts = np.loadtxt('MKN421.txt')
+    J0716_pts = np.loadtxt('for_fit_0716.txt')
     #C279_pts = np.loadtxt("3C279.txt")
     #C279_pts = C279_pts[:,[0,2]]
     #S50716_pts = np.loadtxt("S50716714.txt")
@@ -54,8 +55,9 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
     #flux_BL = BLLac_pts[:,1]
     #ph_energy_MK501 = Mkn501_pts[:,0]
     #flux_MK501 = Mkn501_pts[:,1]
-    #ph_energy_MK421 = Mkn421_pts[:,0]
-    #flux_MK421 = Mkn421_pts[:,1]
+    ph_energy_0716 = J0716_pts[:,0]
+    flux_0716 = J0716_pts[:,2]
+    
 
     W_j=keydat[0,0]#5.0E20
     gamma_bulk=keydat[0,1]#7.5#12.0
@@ -225,7 +227,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
            #line006 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r--', label='IC std')
         #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
         #line6 = ax1.plot(ph_energy_MK501, flux_MK501, 'k.', label='data 2008-2009')
-        #line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')
+        line6 = ax1.plot(10**(J0716_pts[:,0]), 10**(J0716_pts[:,2]), 'k.', label='observation')
         #line6 = ax1.plot(ph_energy_MK421, flux_MK421, 'g.', label='data 2008-2009')
         #line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
 

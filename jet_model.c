@@ -24,8 +24,8 @@
 #define Me 9.11E-31 //electron mass kg
 #define H 6.63E-34 //Plancks constant
 
-const int ARRAY_SIZE = 50; // sets the number of synchrotron & SSC bins
-const double ARRAY_SIZE_D = 50.0; // use to set log ratios, should be the same as above line but with .0
+const int ARRAY_SIZE = 100; // sets the number of synchrotron & SSC bins
+const double ARRAY_SIZE_D = 100.0; // use to set log ratios, should be the same as above line but with .0
 int i, l, m, n, o, p, g, h, nn; //some looping parameters
 double c, d, q;
 int dx_set; // use to define smallest non zero population
@@ -33,17 +33,18 @@ int dx_set; // use to define smallest non zero population
 int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
     // Jet Parameters
-    double W_j = 1.3E37; // W jet power in lab frame. Should be OBSERVED POWER
+    double W_j = 1.4E38; // W jet power in lab frame. Should be OBSERVED POWER
     double L_jet = 5E20; // length in m in the fluid frame
-    double E_min = 5.11E6; // Minimum electron energy 
-    double E_max = 1.7E10; // Energy of the ECO in eV 
-    double alpha = 1.85; // PL index of electrons
-    double theta_open_p = 40.0; // opening angle of the jet in the fluid frame 
-    double gamma_bulk = 16.0; // bulk Lorentz factor of jet material
-    double B = 1E-4, B0 = 1E-4; // B-field at jet base
+    double E_min = 5.11E5; // Minimum electron energy 
+    double E_max = 1.45E10; // Energy of the ECO in eV 
+    double alpha = 1.95; // PL index of electrons
+    double theta_open_p = 16.7; // opening angle of the jet in the fluid frame 
+    double gamma_bulk = 15.00; // bulk Lorentz factor of jet material
+    double B = 2E-5, B0 = 2E-5; // B-field at jet base
     double R0 = 0.0, R = 0.0;  // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double theta_obs;  // observers angle to jet axis in rad 
+    double A_eq = 0.8;
     int N_BLOCKS; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     int N_RINGS; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
     int SSC;
@@ -54,8 +55,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     printf("Jet Parameters: %.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\n", W_j, gamma_bulk, theta_obs, theta_open_p, B0, E_max, alpha, N_BLOCKS);
 
     // Define radius at jet base
-    R0 = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);
-    R = R_0(W_j*(3.0/4.0), 1.0, gamma_bulk, B0);
+    R0 = R_0(W_j*(3.0/4.0), A_eq, gamma_bulk, B0); //assumes equipartition fraction 1.0 usually
+    R = R_0(W_j*(3.0/4.0), A_eq, gamma_bulk, B0);
     double R_prev = R0; //initialize
     printf("Radius at jet base: %.5e \n", R);
 
@@ -262,7 +263,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         E_elec_min[i] = E_elecs[i]*(1.0/pow(ratio, 0.5)); //lower electron eV bounds
         E_elec_max[i] = E_elecs[i]*pow(ratio, 0.5); //upper electron eV bounds
         dEe[i] = E_elec_max[i]-E_elec_min[i]; // sets bin widths in eV
-        A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*Qe, E_max*Qe, 1.0); //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
+        A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*Qe, E_max*Qe, A_eq); //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
         dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
         dN_dE_orig[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
         Ne_e[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe)*dEe[i]*Qe;
@@ -311,7 +312,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     for (i=0; i<ARRAY_SIZE; i++)
     {
 
-        A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*Qe, E_max*Qe, 1.0)*UB_jetbase/Ue_jetbase; //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
+        A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*Qe, E_max*Qe, A_eq) * (UB_jetbase/Ue_jetbase) / A_eq; //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
         dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
         Ne_e[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe)*dEe[i]*Qe;
         Ne_orig[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe)*dEe[i]*Qe; //allows comparison of final to initial electron population
@@ -324,6 +325,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     {
         Ue_jetbase += Ne_e[i]*E_elecs[i]*Qe;
     }
+    printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
 
     // set bins with fewer than ten electrons to zero: prevents resolution from being limited
     cleanpop(Ne_e, ARRAY_SIZE, 10.0);
@@ -856,6 +858,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         //now can also include doppler depolarisation, changing the B field to EFFECTIVE B fields which give correct perp E component as if it had
         //been doppler depolarisedx
         //Each block has its own theta_obs as we are looking inside the conical jet
+
+        UB_jetbase = R*R*C*B*B/(2*1E-7);
+        Ue_jetbase = 0.0;
+        for (i=0; i<ARRAY_SIZE; i++)
+        {
+            Ue_jetbase += Ne_e[i]*E_elecs[i]*Qe;
+        }
+        printf("Ue = %.5e\n",Ue_jetbase);
+        printf("UB = %.5e\n",UB_jetbase);
+        printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
 
         //Jet section mixing here: if Rtan(theta_obs) > R_0/sqrt(N) then we start assigning new B-fields to edge zones and so on, equivalent to seeing emission from zones in section
         //behind and in front.
