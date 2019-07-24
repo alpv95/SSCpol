@@ -24,8 +24,8 @@
 #define Me 9.11E-31 //electron mass kg
 #define H 6.63E-34 //Plancks constant
 
-const int ARRAY_SIZE = 100; // sets the number of synchrotron & SSC bins
-const double ARRAY_SIZE_D = 100.0; // use to set log ratios, should be the same as above line but with .0
+const int ARRAY_SIZE = 50; // sets the number of synchrotron & SSC bins
+const double ARRAY_SIZE_D = 50.0; // use to set log ratios, should be the same as above line but with .0
 int i, l, m, n, o, p, g, h, nn; //some looping parameters
 double c, d, q;
 int dx_set; // use to define smallest non zero population
@@ -33,18 +33,18 @@ int dx_set; // use to define smallest non zero population
 int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
     // Jet Parameters
-    double W_j = 1.4E38; // W jet power in lab frame. Should be OBSERVED POWER
+    double W_j = 5.8E38; // W jet power in lab frame. Should be OBSERVED POWER
     double L_jet = 5E20; // length in m in the fluid frame
     double E_min = 5.11E5; // Minimum electron energy 
-    double E_max = 1.45E10; // Energy of the ECO in eV 
+    double E_max = 2.5E10; // Energy of the ECO in eV 
     double alpha = 1.95; // PL index of electrons
     double theta_open_p = 16.7; // opening angle of the jet in the fluid frame 
-    double gamma_bulk = 15.00; // bulk Lorentz factor of jet material
-    double B = 2E-5, B0 = 2E-5; // B-field at jet base
+    double gamma_bulk = 10.80; // bulk Lorentz factor of jet material
+    double B = 1E-5, B0 = 1E-5; // B-field at jet base
     double R0 = 0.0, R = 0.0;  // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double theta_obs;  // observers angle to jet axis in rad 
-    double A_eq = 0.8;
+    double A_eq = 1.5;
     int N_BLOCKS; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     int N_RINGS; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
     int SSC;
@@ -439,12 +439,15 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
     }
 
-
+    int breakstep;
+    sscanf(argv[8], "%d", &breakstep);
     //Full and zonal Stokes vector bins for Synchrotron and IC respectively
     double S_Stokes[N_BLOCKS][3][ARRAY_SIZE];
     memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
     double S_StokesTotal[ARRAY_SIZE][3];
     memset(S_StokesTotal, 0, sizeof(S_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    double S_StokesTotal_Sec[breakstep][ARRAY_SIZE][3];
+    memset(S_StokesTotal_Sec, 0, sizeof(S_StokesTotal_Sec[0][0][0]) * breakstep * ARRAY_SIZE * 3);
     double S_Pi[ARRAY_SIZE];
     double S_PA[ARRAY_SIZE];
     double S_P[ARRAY_SIZE];
@@ -496,9 +499,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double Pparaperp = 0.0;
     double Pparapara = 0.0;
     double effective_alpha[ARRAY_SIZE];
-    
-    int breakstep;
-    sscanf(argv[8], "%d", &breakstep);
+    double opacity_factor;
+    double dx_op_array[breakstep];
+    double k_array[breakstep][ARRAY_SIZE];
+    double tau[breakstep][ARRAY_SIZE];
+    memset(tau, 0, sizeof(tau[0][0])* breakstep * ARRAY_SIZE);
+
 
     //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
     int thread_id;
@@ -900,12 +906,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         for (i=0; i<ARRAY_SIZE; i++)
         {
             P_single[i] = larmor(B, beta_e[i], gamma_e[i]); //gives the radiated power by one electron in each bin
-            j[i] = j_per_hz(P_single[i], R, dN_dE[i], eps, f_c[i]);//*(R_next/R)*(R_next/R);//gives emissivity per unit frequency
+            //j[i] = j_per_hz(P_single[i], R, dN_dE[i], eps, f_c[i]);//*(R_next/R)*(R_next/R);//gives emissivity per unit frequency
 
-            k[i] = k_new(j[i], eps, f_c[i]); //gives the corresponding opacity
+            //k[i] = k_new(j[i], eps, f_c[i]); //gives the corresponding opacity
             Ps_per_m_elec[i] = P_single[i]*dN_dE[i]*E_elecs[i]*Qe*dfreqs_pol[i] / (2*f_c[i]*C);
+            //Ps_per_m_test[i] = power_emitted(j[i], k[i], R) * M_PI * R; //power per unit length assuming R roughly constant
             //determine whether jet is optically thin or thick -> this part is incomplete
-            R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
+//            R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
 
             //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval per m (/ l_c) 
             for (l=0; l<ARRAY_SIZE; l++) {
@@ -922,8 +929,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 }
             }
             Sync_losses[i] = Ps_per_m_elec[i];
-            //printf("Ps_per_me_test %.5e\t%.5e\n", Ps_per_m_test[i],Ps_per_m_elec[i]);
         }
+        for (i=0; i<ARRAY_SIZE; i++){
+            j[i] = (P_perp[i] + P_para[i]) / (M_PI * R * R);
+            k[i] = (j[i] * C * C) / (2 * pow(eps,0.5) * pow(f_pol[i],2.5));
+        }
+
 
 
         // Find marker for LT section mixing
@@ -941,6 +952,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         } else {
           dx = dx_P;
         }
+//
+//        for (i=0; i<ARRAY_SIZE; i++){
+//            printf("Opacities %.5e\t%.5e\n", k[i], (1 - exp(-k[i]*dx)) / k[i]);
+//        }
 
 	/*************************************************************************************************************/
         // Buffer of previous synchrotron emission setup
@@ -1155,13 +1170,18 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     
                 }
                 if (n-binshiftS >= 0 && n-binshiftS < ARRAY_SIZE){
-                    S_StokesTotal[n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * dx; 
-                    S_StokesTotal[n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * dx; 
-                    S_StokesTotal[n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * dx; 
+                    opacity_factor = (1 - exp(-k[n-binshiftS]*dx)) / k[n-binshiftS]; //tends to dx as opacity goes to zero (optically thin)
+                    if (opacity_factor > 0.9*dx || isnan(opacity_factor) || opacity_factor == 0.0) {
+                       opacity_factor = dx;
+                    }
 
-                    S_StokesZTotal[h][n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * dx; 
-                    S_StokesZTotal[h][n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * dx; 
-                    S_StokesZTotal[h][n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * dx; 
+                    S_StokesTotal_Sec[nSteps][n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
+                    S_StokesTotal_Sec[nSteps][n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
+                    S_StokesTotal_Sec[nSteps][n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
+
+                    S_StokesZTotal[h][n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
+                    S_StokesZTotal[h][n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
+                    S_StokesZTotal[h][n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
                 }
             }
         }
@@ -1226,12 +1246,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         cleanpop(Ne_e, ARRAY_SIZE, 10.0); //any elements with Ne_e<10 set to zero to avoid nans
         cleanpop(Ne_intermed, ARRAY_SIZE, 10.0); //any elements with Ne_e<10 set to zero to avoid nans
                 
-	B_prev = B;//need to update dfreqs
+	    B_prev = B;//need to update dfreqs
         B = get_newB(B0, R0, R);
         eps = epsilon(B);
 
         // reset values to 0 for the next section x step
-	u_rad = 0.0;
+	    u_rad = 0.0;
         for (i=0; i<ARRAY_SIZE; i++)
         {
             f_c[i] = f_crit(gamma_e[i], B);
@@ -1240,6 +1260,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             dfreqs[i] = f_em_max[i]-f_em_min[i];
             A_elecs[i] = A_orig*(Ne_e[i]/Ne_orig[i]);
             dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
+            k_array[nSteps][i] = k[i]; //opacity of section for later integral
             P_para[i] = 0.0;//Reset
             P_perp[i] = 0.0;
             P_paraIC[i] = 0.0;
@@ -1247,6 +1268,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             P_X[i] = 0.0;
             Ps_per_mIC_elec[i] = 0.0;
             Ps_per_m_elec[i] = 0.0;
+            Ps_per_m_test[i] = 0.0;
 
         }
 
@@ -1261,6 +1283,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         memset(urad_array_para, 0, sizeof(urad_array_para[0][0])* N_BLOCKS * ARRAY_SIZE);
         memset(dfactor_perp, 0, sizeof(dfactor_perp[0][0][0])* N_BLOCKS * N_BLOCKS * ARRAY_SIZE); //reset these to 0 for next section
         memset(dfactor_para, 0, sizeof(dfactor_para[0][0][0])* N_BLOCKS * N_BLOCKS * ARRAY_SIZE);
+
+        //Opacity Stuff for integral after while loop
+        dx_op_array[nSteps] = dx;
+
 
         nSteps+=1; //allows the number of jet sections to be determined
         printf("nStep, dx, x, B, R: %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
@@ -1289,6 +1315,28 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     }
     free(Pperp_array);
     free(Ppara_array);
+
+    //Opacity integral calculation:
+    for (n=0; n<breakstep; n++){
+        for (l=0; l<ARRAY_SIZE; l++){
+            //printf("K %d\t%d\t%.5e\n", n, l, k_array[n][l]);
+            for (i=0; i<breakstep; i++){
+                if (i > n){
+                    tau[n][l] += k_array[i][l] * dx_op_array[i] / cos(deg2rad(theta_obs));
+                }
+            }
+        }
+    }
+
+    for (i=0; i<breakstep; i++){
+        for (l=0; l<ARRAY_SIZE; l++){
+            S_StokesTotal[l][0] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]);
+            S_StokesTotal[l][1] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]);
+            S_StokesTotal[l][2] += S_StokesTotal_Sec[i][l][2] * exp(-tau[i][l]);
+            //printf("TAU %d\t%d\t%.5e\n", i, l, tau[i][l]);
+        }
+    }
+
 
     double newbins[ARRAY_SIZE]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
     for (n=0; n<ARRAY_SIZE; n++){
