@@ -1330,7 +1330,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     for (i=0; i<breakstep; i++){
         for (l=0; l<ARRAY_SIZE; l++){
-            S_StokesTotal[l][0] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]);
+            S_StokesTotal[l][0] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]); // not quite right since binshifts, but approx ok for purposes of fit
             S_StokesTotal[l][1] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]);
             S_StokesTotal[l][2] += S_StokesTotal_Sec[i][l][2] * exp(-tau[i][l]);
             //printf("TAU %d\t%d\t%.5e\n", i, l, tau[i][l]);
