@@ -930,12 +930,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             }
             Sync_losses[i] = Ps_per_m_elec[i];
         }
+
         for (i=0; i<ARRAY_SIZE; i++){
             j[i] = (P_perp[i] + P_para[i]) / (M_PI * R * R);
             k[i] = (j[i] * C * C) / (2 * pow(eps,0.5) * pow(f_pol[i],2.5));
         }
-
-
 
         // Find marker for LT section mixing
         marker = (int)round(R*tan(deg2rad(theta_obs)) /  (2 * R0 / (sqrt(N_BLOCKS)) ) );
@@ -1191,12 +1190,17 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         R_prev = R;
         R = R_new(R0, deg2rad(theta_open_p), x);
 
+
         //correct synchrotron for full length + IC
         for (i=0; i<ARRAY_SIZE; i++)
         {
             Ps_per_m[i] *= dx;
             //Ps_per_m_IC[i] *= dx;
-            Sync_losses[i] *= dx;
+            opacity_factor = (1 - exp(-k[i]*dx)) / k[i]; //tends to dx as opacity goes to zero (optically thin)
+            if (opacity_factor > 0.9*dx || isnan(opacity_factor) || opacity_factor == 0.0) {
+               opacity_factor = dx;
+            }
+            Sync_losses[i] *= opacity_factor; //low energy synchrotron losses now affected by opacity
             IC_losses[i] *= dx;              //ALP
             P_perp[i] *= dx;  //polarisation powers
             P_para[i] *= dx;
