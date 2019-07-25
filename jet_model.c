@@ -44,7 +44,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double R0 = 0.0, R = 0.0;  // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double theta_obs;  // observers angle to jet axis in rad 
-    double A_eq = 1.5;
+    double A_eq = 1.0;
     int N_BLOCKS; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
     int N_RINGS; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
     int SSC;
@@ -1331,7 +1331,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     for (i=0; i<breakstep; i++){
         for (l=0; l<ARRAY_SIZE; l++){
             S_StokesTotal[l][0] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]); // not quite right since binshifts, but approx ok for purposes of fit
-            S_StokesTotal[l][1] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]);
+            S_StokesTotal[l][1] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]); //should address binshifts properly tho as it affects polarization of mm and below
             S_StokesTotal[l][2] += S_StokesTotal_Sec[i][l][2] * exp(-tau[i][l]);
             //printf("TAU %d\t%d\t%.5e\n", i, l, tau[i][l]);
         }
