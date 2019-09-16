@@ -308,8 +308,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
 
     //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
-    MTRand seedr = seedRand((unsigned)time(NULL));
-    //MTRand seedr = seedRand(5); //fix random seed
+    //MTRand seedr = seedRand((unsigned)time(NULL));
+    MTRand seedr = seedRand(9); //fix random seed
     double B_0[n_blocks];
     double B_1[n_blocks];
     double B_2[n_blocks];

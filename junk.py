@@ -37,19 +37,19 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
     d_Blazar = 1000E6*3.08E18 # pc in cm #276E6pc BL_Lac, 144E6 Mkn501, 131E6 Mkn421, 891E6 J2143, 1000E6 J0721, 1800E6 3C279
     z = 0.3 #0.0686 BL-Lac, 0.034 Mkn501, 0.031 Mkn421, 0.211 J2143, 0.3 J0721, 0.536 3C279
     theta_obs=keydat[2]#2.8
-    BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
-    Mkn501_pts = np.loadtxt('MKN501.txt')
-    Mkn421_pts = np.loadtxt('MKN421.txt')
-    C279_pts = np.loadtxt("3C279.txt")
-    C279_pts = C279_pts[:,[0,2]]
-    S50716_pts = np.loadtxt("S50716714.txt")
-    S50716_pts = S50716_pts[:,[0,2]]
-    ph_energy = BLLac_pts[:,0]
-    flux_BL = BLLac_pts[:,1]
-    ph_energy_MK501 = Mkn501_pts[:,0]
-    flux_MK501 = Mkn501_pts[:,1]
-    ph_energy_MK421 = Mkn421_pts[:,0]
-    flux_MK421 = Mkn421_pts[:,1]
+    #BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
+    #Mkn501_pts = np.loadtxt('MKN501.txt')
+    #Mkn421_pts = np.loadtxt('MKN421.txt')
+    #C279_pts = np.loadtxt("3C279.txt")
+    #C279_pts = C279_pts[:,[0,2]]
+    #S50716_pts = np.loadtxt("S50716714.txt")
+    #S50716_pts = S50716_pts[:,[0,2]]
+    #ph_energy = BLLac_pts[:,0]
+    #flux_BL = BLLac_pts[:,1]
+    #ph_energy_MK501 = Mkn501_pts[:,0]
+    #flux_MK501 = Mkn501_pts[:,1]
+    #ph_energy_MK421 = Mkn421_pts[:,0]
+    #flux_MK421 = Mkn421_pts[:,1]
 
     W_j=keydat[0]#5.0E20
     gamma_bulk=keydat[1]#7.5#12.0
@@ -86,14 +86,20 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
                  # alpha, 180 / np.pi * np.arctan(np.tan(np.pi * theta_open_p / 180) / gamma_bulk), theta_obs,
                  # gamma_bulk, n_blocks))
     ax0.set_xscale("log")
-    ax0.set_xlim([1E-6, 1E13])
+    ax0.set_xlim([1E-4, 1E17])
     ax0.set_ylim([0, 1.0])
     ax0.set_ylabel(r'$\Pi(\omega)$', size='15')
     ax0.tick_params(labelbottom=False, labeltop=False, labelleft=True, labelright=False,
                       bottom=True, top=True, left=True, right=True)
     ax0.tick_params(axis="y", labelsize=12)
+    axf = ax0.twiny()
+    axf.set_xscale("log")
+    axf.set_xlim([(1.6E-19*1E-4)/6.63E-34, 1.6E-19*1E17 / 6.63E-34])
+    axf.tick_params(axis="x", labelsize=12)
+    axf.set_xlabel(r'$\nu [Hz]$', size='15')
+
     ax05 = plt.subplot(gs[1], sharex=ax0)
-    ax05.set_xlim([1E-6, 1E13])
+    ax05.set_xlim([1E-4, 1E17])
     ax05.set_ylim([-90, 90])
     yticks = ax05.yaxis.get_major_ticks()
     ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='15')
@@ -180,6 +186,7 @@ def plot_SED(filename,IC=True): #plots SED with polarisation fraction and EVPA a
 
 
         line0 = ax0.plot(freqtoeV(fq_mids), Pol,'b',label='Pol Fraction')
+        axf.plot(1.6E-19*freqtoeV(fq_mids)/6.63E-34, Pol,'b')
         #line001 = ax0.plot(freqtoeV(fq_mids), stdpi[:,0],'b-.',label='Pol Fraction std')
         line0143 = ax0.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), Pol_IC[P_detected_IC!=0.0],'r',label='Pol Fraction IC')
         #line01 = ax0.plot(freqtoeV(fq_mids_IC), stdpi_IC[:,0], 'r-.',label='Pol IC std')

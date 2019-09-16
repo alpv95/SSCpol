@@ -32,8 +32,8 @@ for i in range(1):
     # else:
     #     n_blocks = 127
     #     n_rings = 6
-    n_blocks = 1
-    n_rings = 0
+    n_blocks = 19
+    n_rings = 2
 
     subprocess.call(['./a.out',str(EVPA_rotation),str(i),str(DD),str(theta_obs),str(n_blocks),str(n_rings)])
     junk.plot_SED("TESTFIL2.txt")
