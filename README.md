@@ -17,6 +17,7 @@ Python 3 with and gcc are the only requirements (gcc version requires OpenMP sup
 
 Basic algorithm:
 -----
+Numbers in paretheses refer to equations in apj2.
 ![Flow chart outlining the basic algorithm](FlowChart.jpg?raw=true "Title")
 
 
