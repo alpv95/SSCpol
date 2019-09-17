@@ -12,6 +12,7 @@
 #include "jet_fns.h"
 #include "mtwister.h" //random number generation
 #include <time.h>
+#include <omp.h>
 
 #define Me_EV 0.511E6 //electron rest energy
 #define C 3.0E8 //speed of light
@@ -56,7 +57,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     // Read in any required data (only Bessel Functions for now)
     FILE *FGfile;
-    FGfile = fopen("FG.txt","r"); //Bessel Functions for Synchrotron
+    FGfile = fopen("src/FG.txt","r"); //Bessel Functions for Synchrotron
 
     double FG[75][3]; //Bessel Functions F, G and FG
     for (m=0; m<75; m++)
@@ -862,10 +863,34 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         if (SSC){
 
+            #pragma omp parallel for private(h,n,l,p,m,i,o) reduction(+:IC_Stokes[:N_BLOCKS][:ARRAY_SIZE][:3])
             for (g=0; g<N_BLOCKS; g++){ //B-fields
+                printf("NUM_THREADS: %d\n", omp_get_num_threads());
+                double Btheta = 90*M_PI/180;
+                double q_theta;
+                double zeta;
+                double cosk_single[7];
+                double phik_single[7];
+                int phik_start, phik_end, cosk_start, cosk_end;
+                int cosk_list[7];
+                int phik_list[7];
+                int nn;
+                double F_min;
+                double KN = 1.0; //empirical klein nishina factor
+                double v_k[3] = {0}; //incoming photon vector
+                double e_k[3] = {0}; //incoming polarization vector perpendicular to B
+                double _e[2] = {0}; //outgoing polarization vector
+                double e_kpara[3] = {0}; //incoming polarization vector parallel to B
+                double zone_d; //distance from other zones
+                double Pperpperp = 0.0;
+                double Pperppara = 0.0;
+                double Pparaperp = 0.0;
+                double Pparapara = 0.0;
+
                 for (h=0; h<N_BLOCKS; h++){ //block locations
                     Btheta = acos(B_effectives[marker_list[h]][h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
                     zeta = atan(B_effectives[marker_list[h]][h][g][1]/B_effectives[marker_list[h]][h][g][0]); //to rotate each Stokes to lab frame
+
 
                     if (h==g){
                         phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
@@ -890,10 +915,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                         cosk_single[6] = unitalign6[h][g][2]; //z component isnt affected by -zeta rotation
                         phik_single[6] = atan2(unitalign6[h][g][0]*sin(-zeta) + unitalign6[h][g][1]*cos(-zeta), unitalign6[h][g][0]*cos(-zeta) - unitalign6[h][g][1]*sin(-zeta));
 
-	    	    for (n=0; n<7; n++){
+                        for (n=0; n<7; n++){
                             cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
                             phik_list[n] = findClosest(phik, phik_single[n], 10);
-                            //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
                         }
                         cosk_start = 0, cosk_end = 7;
                         phik_start = 0, phik_end = 1;
@@ -902,6 +926,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                     } else {
                       continue;
                     }
+
 
                     for (n=0; n<ARRAY_SIZE; n++){  //f_polIC (compton energy)
                         for (l=0; l<ARRAY_SIZE; l++){ //f_pol (sync energy)

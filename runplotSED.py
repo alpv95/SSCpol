@@ -1,7 +1,7 @@
 import time
 import sys
 import os
-import junk
+import utils.junk as junk
 import subprocess
 import argparse
 
@@ -25,7 +25,7 @@ n_rings =[0,1,2,3,4,5,6][[1,7,19,37,64,91,127].index(args.nblocks)] #rings fixed
 task_id = 0 #for multiprocessing
 ############################################################
 
-subprocess.call(['gcc','jet_model.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lm']) #Compile C
+subprocess.call(['gcc-9','-fopenmp','src/jet_model.c','src/mtwister.c','include/mtwister.h', 'src/jet_fns.c', 'include/jet_fns.h','-lm','-I','include/']) #Compile C
 inpts = [(0,i,1,args.theta_obs, args.nblocks, n_rings, task_id, args.nsteps, args.dir, int(args.SSC)) for i in range(args.nworkers)]
 
 try:

@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from scipy.signal import savgol_filter
 import math as math
-from jet_fns import *
+from utils.jet_fns import *
 import matplotlib.cm as cm
 import copy as copy
 
