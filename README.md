@@ -14,9 +14,9 @@ Jet parameters other than the observation angle can be modified in `jet_model.c`
 ## Requirements
 Python 3 with and gcc are the only requirements (gcc version requires OpenMP support if parallelization is desired).
 
-------
 
 The flow chart below shows the basic algorithm:
+-----
 ![Flow chart outlining the basic algorithm](FlowChart.jpg?raw=true "Title")
 
 
