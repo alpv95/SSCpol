@@ -1,5 +1,5 @@
 # Synchrotron and Synchrotron-Self Compton (SSC) Polarization of Blazars
-Codebase to calculate the observed SED and polarization of relativistic conical jet of electrons and positrons initially in equipartition following a power law with an exponential cutoff energy. Developed for apj1 & apj2; model inspired partly by PC & Marscher.
+Codebase to calculate the observed SED and polarization of relativistic conical jet of electrons and positrons initially in equipartition following a power law with an exponential cutoff energy. Developed for [Peirson & Romani (2018)](https://iopscience.iop.org/article/10.3847/1538-4357/aad69d/meta) & [Peirson & Romani (2019)]; model inspired partly by  [Potter & Cotter (2012)](https://academic.oup.com/mnras/article/423/1/756/1747479) & [TEMZ](https://www.bu.edu/blazars/temz.html).
 The free parameters are: jet power [W], initial electron power law index, the electron exponential cutoff energy [J],  initial magnetic flux density at jet base [T], bulk Lorentz factor, observation angle [rad], jet opening angle [rad] and the number of random B-field zones in one jet cross section (either 1,7,19,37,61,91,127). Isotropic random B-fields are generated using the Mersenne twister algorithm (cite). The SSC calculation is parallelized using **OpenMP**.
 
 ## To run
@@ -17,7 +17,7 @@ Python 3 with and gcc are the only requirements (gcc version requires OpenMP sup
 
 Basic algorithm:
 -----
-Numbers in paretheses refer to equations in apj2.
+Numbers in paretheses refer to equations in [Peirson & Romani (2019)].
 ![Flow chart outlining the basic algorithm](FlowChart.jpg?raw=true "Title")
 
 
