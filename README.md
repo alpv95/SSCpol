@@ -6,7 +6,7 @@ jet_model.c contains the full simulation, outputting a number of text files with
 
 runplotSED.py acts as a wrapper for jet_model.c and allows one to run and plot the results. Use --help to see options and flags. Jet parameters other than $\theta_{obs}$ can be modified in jet_model.c directly.
 
-![Alt text](TikzFlowChart.pdf? "Title")
+![Flow chart outlining the basic algorithm](https://github.com/alpv95/SSCpol/TikzFlowChart.pdf)
 
 
 
