@@ -43,7 +43,12 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
     d_Blazar = 1000E6*3.08E18 # pc in cm #276E6pc BL_Lac, 144E6 Mkn501, 131E6 Mkn421, 891E6 J2143, 1000E6 J0721, 1800E6 3C279
     z = 0.3 #0.0686 BL-Lac, 0.034 Mkn501, 0.031 Mkn421, 0.211 J2143, 0.3 J0721, 0.536 3C279
     theta_obs=keydat[0,2]#2.8
-    #BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
+    J0211_pts = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051_XMM.txt')
+    # J0211_pts2 = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051.txt')
+    # J0211_pts = np.concatenate([J0211_pts,J0211_pts2])
+    S5_pts = np.loadtxt('data/S50716714_2.txt')
+    TXS_pts = np.loadtxt('data/txs_xray_data.txt')
+    # BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
     #Mkn501_pts = np.loadtxt('MKN501.txt')
     #Mkn421_pts = np.loadtxt('MKN421.txt')
     #C279_pts = np.loadtxt("3C279.txt")
@@ -220,11 +225,14 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
         line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0],linestyle='-.', color='r', label='IC')#Inverse Compton color=(j/17,0.2,0.2)
         line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
         line4 = ax1.plot(freqtoeV(fq_mids), P_detected,'-', color='b', label='synchrotron') #synchrotron color=(0.1,j/17,1)
-        #if (n_examples > 1 ):
-           #line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b--', label='synchrotron std')
-           #line006 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r--', label='IC std')
+        # if (n_examples > 1 ):
+        #    line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b--', label='synchrotron std')
+        #    line006 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r--', label='IC std')
         #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
-        #line6 = ax1.plot(ph_energy_MK501, flux_MK501, 'k.', label='data 2008-2009')
+        line6 = ax1.errorbar(10**S5_pts[:,0], 10**S5_pts[:,2], yerr=np.stack([np.abs(10**S5_pts[:,2] - 10**(S5_pts[:,2] - S5_pts[:,3])),np.abs(10**S5_pts[:,2] - 10**(S5_pts[:,2] + S5_pts[:,3]))]), color='k', marker='o', label='S5',ls="")
+        line6 = ax1.errorbar(10**TXS_pts[:,0], 10**TXS_pts[:,2], yerr=np.stack([np.abs(10**TXS_pts[:,2] - 10**(TXS_pts[:,2] - TXS_pts[:,3])),np.abs(10**TXS_pts[:,2] - 10**(TXS_pts[:,2] + TXS_pts[:,3]))]), color='g', marker='o', label='TXS',ls="")
+        line6 = ax1.errorbar(10**J0211_pts[:,0], 10**J0211_pts[:,2], yerr=np.stack([np.abs(10**J0211_pts[:,2] - 10**(J0211_pts[:,2] - J0211_pts[:,3])),np.abs(10**J0211_pts[:,2] - 10**(J0211_pts[:,2] + J0211_pts[:,3]))]), color='r', marker='o', label='J0211',ls="")
+
         #line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')
         #line6 = ax1.plot(ph_energy_MK421, flux_MK421, 'g.', label='data 2008-2009')
         #line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')

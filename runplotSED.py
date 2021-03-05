@@ -25,7 +25,7 @@ n_rings =[0,1,2,3,4,5,6][[1,7,19,37,64,91,127].index(args.nblocks)] #rings fixed
 task_id = 0 #for multiprocessing
 ############################################################
 
-subprocess.call(['gcc-9','-fopenmp','src/jet_model.c','src/mtwister.c','include/mtwister.h', 'src/jet_fns.c', 'include/jet_fns.h','-lm','-I','include/']) #Compile C
+subprocess.call(['gcc','-fopenmp','src/jet_model.c','src/mtwister.c','include/mtwister.h', 'src/jet_fns.c', 'include/jet_fns.h','-lm','-I','include/']) #Compile C
 inpts = [(0,i,1,args.theta_obs, args.nblocks, n_rings, task_id, args.nsteps, args.dir, int(args.SSC)) for i in range(args.nworkers)]
 
 try:
@@ -43,7 +43,7 @@ for i in range(args.nworkers):
 junk.plot_SED(args.dir + "/pi0_0.txt",args.dir + "/keyparams0_0.txt",args.dir + "/freqrange0_0.txt")
 
 #then run this once all workers have finished, useful if nworkers > 1
-subprocess.check_call('cat ' + args.dir + '/pi' + str(task_id) + '_* > ' + args.dir + '/pi' + str(args.theta_obs) + '.txt', shell=True) #combine all the output fil    es in order of inputs
+subprocess.check_call('cat ' + args.dir + '/pi' + str(task_id) + '_* > ' + args.dir + '/pi' + str(args.theta_obs) + '.txt', shell=True) #combine all the output files in order of inputs
 subprocess.check_call('cat ' + args.dir + '/basicdata' + str(task_id) + '_* > ' + args.dir + '/basicdata'+ str(args.theta_obs) +'.txt',shell=True)
 subprocess.check_call('cat ' + args.dir + '/freqrange' + str(task_id) + '_* > ' + args.dir + '/freqrange'+ str(args.theta_obs) +'.txt',shell=True)
 subprocess.check_call('cat ' + args.dir + '/keyparams' + str(task_id) + '_* > ' + args.dir + '/keyparams'+ str(args.theta_obs) +'.txt',shell=True) 
