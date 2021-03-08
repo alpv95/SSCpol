@@ -25,7 +25,7 @@ n_rings =[0,1,2,3,4,5,6][[1,7,19,37,61,91,127].index(args.nblocks)] #rings fixed
 task_id = 0 #for multiprocessing
 ############################################################
 
-subprocess.call(['gcc','jet_model.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lgsl', '-lcblas']) #Compile C
+subprocess.call(['gcc','jet_model.c','mtwister.c','mtwister.h', 'jet_fns.c', 'jet_fns.h','-lgsl', '-lgslcblas', '-lm']) #Compile C
 inpts = [(0,i,1,args.theta_obs, args.nblocks, n_rings, task_id, args.nsteps, args.dir, int(args.SSC)) for i in range(args.nworkers)]
 
 try:
@@ -34,7 +34,7 @@ try:
     print("Directory " , args.dir,  " Created ")
 except FileExistsError:
     print("Directory ", args.dir,  " already exists")
-
+print('hello')
 for i in range(args.nworkers):
     inpt = inpts[i]
     subprocess.check_call(['./a.out', str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6]),str(inpt[7]),str(inpt[8]),str(inpt[9]) ])

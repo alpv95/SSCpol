@@ -33,14 +33,14 @@ int dx_set; // use to define smallest non zero population
 int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
     // Jet Parameters
-    double W_j = 5.8E38; // W jet power in lab frame. Should be OBSERVED POWER
+    double W_j = 1.3E37; // W jet power in lab frame. Should be OBSERVED POWER
     double L_jet = 5E20; // length in m in the fluid frame
-    double E_min = 5.11E5; // Minimum electron energy 
-    double E_max = 2.5E10; // Energy of the ECO in eV 
-    double alpha = 1.95; // PL index of electrons
-    double theta_open_p = 16.7; // opening angle of the jet in the fluid frame 
-    double gamma_bulk = 10.80; // bulk Lorentz factor of jet material
-    double B = 1E-5, B0 = 1E-5; // B-field at jet base
+    double E_min = 5.11E6; // Minimum electron energy 
+    double E_max = 1.7E10; // Energy of the ECO in eV 
+    double alpha = 1.85; // PL index of electrons
+    double theta_open_p = 40.0; // opening angle of the jet in the fluid frame 
+    double gamma_bulk = 16; // bulk Lorentz factor of jet material
+    double B = 1E-4, B0 = 1E-4; // B-field at jet base
     double R0 = 0.0, R = 0.0;  // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double theta_obs;  // observers angle to jet axis in rad 
