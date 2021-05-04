@@ -29,10 +29,9 @@ def Theta_jet(theta_op_lab, gamma): #theta_opening in jet frame
 def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with polarisation fraction and EVPA as a function of energy
     #can plot
     #filename can be single string or list of strings to plot simultaneously
-    legends = 0
     if isinstance(filename, str):
         filename = [filename]
-        legends = 0
+        legends = 1
 
     keydat = np.loadtxt(keyfile)
     if keydat.ndim == 1:
@@ -46,8 +45,14 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
     J0211_pts = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051_XMM.txt')
     # J0211_pts2 = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051.txt')
     # J0211_pts = np.concatenate([J0211_pts,J0211_pts2])
-    S5_pts = np.loadtxt('data/S50716714_2.txt')
-    TXS_pts = np.loadtxt('data/txs_xray_data.txt')
+    S5_pts = np.loadtxt('data/tofit_flare_0716+016.txt')
+    S5_pts2 = np.loadtxt('data/tofit_historical_0716+016.txt')
+    S5_pts2 = np.insert(S5_pts2, 1, 0,axis=1)
+    S5_pts = np.concatenate([S5_pts,S5_pts2])
+    TXS_pts = np.loadtxt('data/to_fit_SED_txs0506+056.txt')
+    TXS_pts = np.insert(TXS_pts, 1, 0, axis=1)
+    TXS_pts2 = np.loadtxt('data/txs_xray_data.txt')
+    TXS_pts = np.concatenate([TXS_pts,TXS_pts2])
     # BLLac_pts = np.loadtxt('BLLacpointsfinal.data')
     #Mkn501_pts = np.loadtxt('MKN501.txt')
     #Mkn421_pts = np.loadtxt('MKN421.txt')
@@ -114,7 +119,7 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
     ax05.set_ylabel(r'$\theta_{sky}[deg]$', size='15')
     ax1 = plt.subplot(gs[2], sharex=ax0)
     ax1.set_yscale('log')
-    ax1.set_ylim([1E-17, 9.99E-11])
+    ax1.set_ylim([1E-16, 9.99E-10])
     ax1.set_xlim([1E-7, 1E25])
     ax1.set_ylabel(r'$\nu F_{\nu}$ [erg s$^{-1}$ cm$^{-2}$]', size='15')
     ax1.set_xlabel(r'$h\nu$ [eV]', size='15')
@@ -222,24 +227,31 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
 
         #savgol filter to smooth bumpy ICS from rebinning larger IC bins in synchrotron ones.
         #np.savetxt("singleSED.txt", np.array([freqtoeV(fq_mids),P_detected]))
-        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0],linestyle='-.', color='r', label='IC')#Inverse Compton color=(j/17,0.2,0.2)
-        line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k', label='ICS')  # Inverse Compton + Synchrotron
-        line4 = ax1.plot(freqtoeV(fq_mids), P_detected,'-', color='b', label='synchrotron') #synchrotron color=(0.1,j/17,1)
+        line3 = ax1.plot(freqtoeV(fq_mids_IC[P_detected_IC!=0.0]), P_detected_IC[P_detected_IC!=0.0],linestyle='-.', color='r')#Inverse Compton color=(j/17,0.2,0.2)
+        line355 = ax1.plot(freqtoeV(fq_mids), savgol_filter(P_detected_ICS,9,3), 'k')  # Inverse Compton + Synchrotron
+        line4 = ax1.plot(freqtoeV(fq_mids), P_detected,'-', color='b') #synchrotron color=(0.1,j/17,1)
         # if (n_examples > 1 ):
         #    line004 = ax1.plot(freqtoeV(fq_mids), stdpi[:,2], 'b--', label='synchrotron std')
         #    line006 = ax1.plot(freqtoeV(fq_mids_IC), stdpi_IC[:, 2], 'r--', label='IC std')
         #line5 = ax1.plot(freqtoeV(fq_mids), P_detected_raw, 'b-.', label='synchrotronRAW') #synchrotron
-        line6 = ax1.errorbar(10**S5_pts[:,0], 10**S5_pts[:,2], yerr=np.stack([np.abs(10**S5_pts[:,2] - 10**(S5_pts[:,2] - S5_pts[:,3])),np.abs(10**S5_pts[:,2] - 10**(S5_pts[:,2] + S5_pts[:,3]))]), color='k', marker='o', label='S5',ls="")
-        line6 = ax1.errorbar(10**TXS_pts[:,0], 10**TXS_pts[:,2], yerr=np.stack([np.abs(10**TXS_pts[:,2] - 10**(TXS_pts[:,2] - TXS_pts[:,3])),np.abs(10**TXS_pts[:,2] - 10**(TXS_pts[:,2] + TXS_pts[:,3]))]), color='g', marker='o', label='TXS',ls="")
+        line6 = ax1.errorbar(10**S5_pts[:,0], 10**S5_pts[:,2], yerr=np.stack([np.abs(10**S5_pts[:,2] - 10**(S5_pts[:,2] - S5_pts[:,3])),np.abs(10**S5_pts[:,2] - 10**(S5_pts[:,2] + S5_pts[:,3]))]), color='k', marker='o', label='S50716',ls="")
+        line6 = ax1.errorbar(10**TXS_pts[:,0], 10**TXS_pts[:,2], yerr=np.stack([np.abs(10**TXS_pts[:,2] - 10**(TXS_pts[:,2] - TXS_pts[:,3])),np.abs(10**TXS_pts[:,2] - 10**(TXS_pts[:,2] + TXS_pts[:,3]))]), color='g', marker='o', label='TXS0506',ls="")
         line6 = ax1.errorbar(10**J0211_pts[:,0], 10**J0211_pts[:,2], yerr=np.stack([np.abs(10**J0211_pts[:,2] - 10**(J0211_pts[:,2] - J0211_pts[:,3])),np.abs(10**J0211_pts[:,2] - 10**(J0211_pts[:,2] + J0211_pts[:,3]))]), color='r', marker='o', label='J0211',ls="")
+        ax1.axvline(10**3,ls=':',color='k')
+        ax1.axvline(10**4,ls=':',color='k')
+        ax05.axvline(10**3,ls=':',color='k')
+        ax05.axvline(10**4,ls=':',color='k')
+        ax0.axvline(10**3,ls=':',color='k')
+        ax0.axvline(10**4,ls=':',color='k')
+
 
         #line6 = ax1.plot(10**(S50716_pts[:,0]), 10**(S50716_pts[:,1]), 'k.', label='observation')
         #line6 = ax1.plot(ph_energy_MK421, flux_MK421, 'g.', label='data 2008-2009')
         #line7 = ax1.plot(ph_energy[0:30], flux_BL[0:30], 'r.', label='data 2008-2009')
 
         if (legends):
-            ax0.legend()
-            ax05.legend()
+            # ax0.legend()
+            # ax05.legend()
             ax1.legend()
     if save:
        fig.savefig("SED.pdf", bbox_inches='tight')
