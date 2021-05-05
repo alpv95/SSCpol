@@ -30,28 +30,28 @@ int i, l, m, n, o, p, g, h, nn; //some looping parameters
 double c, d, q;
 int dx_set; // use to define smallest non zero population
 
-int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
+int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *f_pol) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
-    // Jet Parameters 1.82518e+37,1.67180e+11,1.88273e+00, 5.19613e+01, 1.24718e+01, 1.64365e-04,2.67348e+00,1.11467e+00
-    double W_j = 1.82518e+37; // W jet power in lab frame. Should be OBSERVED POWER
+    // Jet Parameters
+    double W_j = argv[0]; //1.3E37; // W jet power in lab frame. Should be OBSERVED POWER
     double L_jet = 5E20; // length in m in the fluid frame
     double E_min = 5.11E6; // Minimum electron energy 
-    double E_max = 1.67180e+11; // Energy of the ECO in eV 
-    double alpha = 1.88273e+00; // PL index of electrons
-    double theta_open_p = 5.19613e+01; // opening angle of the jet in the fluid frame 
-    double gamma_bulk = 1.24718e+01; // bulk Lorentz factor of jet material
-    double B = 1.64365e-04, B0 = 1.64365e-04; // B-field at jet base
+    double E_max = argv[1]; //1.7E10; // Energy of the ECO in eV 
+    double alpha = argv[2]; //1.85; // PL index of electrons
+    double theta_open_p = argv[3]; //40.0; // opening angle of the jet in the fluid frame 
+    double gamma_bulk = argv[4]; //16; // bulk Lorentz factor of jet material
+    double B = argv[5], B0 = argv[5]; //1E-4; // B-field at jet base
     double R0 = 0.0, R = 0.0;  // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
-    double theta_obs;  // observers angle to jet axis in rad 
-    double A_eq = 1.11467e+00;
-    int N_BLOCKS; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
-    int N_RINGS; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
-    int SSC;
-    sscanf(argv[4], "%lf", &theta_obs);
-    sscanf(argv[5], "%d", &N_BLOCKS);
-    sscanf(argv[6], "%d", &N_RINGS);
-    sscanf(argv[10], "%d", &SSC);
+    double theta_obs = argv[6];  // observers angle to jet axis in rad 
+    double A_eq = argv[7]; //1.0
+    int N_BLOCKS = 1; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
+    int N_RINGS = 0; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
+    int SSC = 1;
+    // sscanf(argv[4], "%lf", theta_obs);
+    // sscanf(argv[5], "%d", N_BLOCKS);
+    // sscanf(argv[6], "%d", N_RINGS);
+    // sscanf(argv[10], "%d", SSC);
     printf("Jet Parameters: %.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", W_j, E_max, alpha, theta_open_p, gamma_bulk, B0, theta_obs, A_eq);
 
     // Define radius at jet base
@@ -74,12 +74,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     }
 
     // Output filenames for cluster
-    char thread_idst[10];
-    char task_idst[10];
-    char results_dir[15];
-    sscanf(argv[2], "%s", thread_idst);
-    sscanf(argv[7], "%s", task_idst);
-    sscanf(argv[9], "%s", results_dir);
+    char thread_idst[10] = "0";
+    char task_idst[10] = "0";
+    char results_dir[15] = "workdir";
+    // sscanf(argv[2], "%s", thread_idst);
+    // sscanf(argv[7], "%s", task_idst);
+    // sscanf(argv[9], "%s", results_dir);
     strcat(task_idst,"_");
     strcat(task_idst,thread_idst);
     strcat(task_idst,".txt");			
@@ -119,7 +119,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //proj/ected B field onto plane of the sky for each section
     //block_thetafile = fopen("block_thetafile.txt","w"); //saves the angle to the line of sight of each block
     //Xfile = fopen("Xfile.txt","w");
-    fprintf(keyparams, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\t%d \n", W_j, gamma_bulk, theta_obs, theta_open_p, alpha, B, E_max, N_BLOCKS, ARRAY_SIZE);
+    // fprintf(keyparams, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\t%d \n", W_j, gamma_bulk, theta_obs, theta_open_p, alpha, B, E_max, N_BLOCKS, ARRAY_SIZE);
 
     //define some useful parameters to gauge progress
     int nSteps = 0; //how many sections the jet has broken down into
@@ -229,8 +229,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     //****************Initialise Polarisation variables *****************************************************************************//
     //first set frequency bins for polarised powers to drop into:
-    double f_pol[ARRAY_SIZE];
-    double f_pol_IC[ARRAY_SIZE]; //fixed bins
+    // double f_pol[ARRAY_SIZE];
+    // double f_pol_IC[ARRAY_SIZE]; //fixed bins
     double f_pol_ICbounds[ARRAY_SIZE+1]; //for calculating IC bins properly
     double P_perp[ARRAY_SIZE];
     memset(P_perp, 0.0, ARRAY_SIZE*sizeof(P_perp[0]));
@@ -297,8 +297,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         dfreqs_polIC[i] = (f_em_max_IC[i]-f_em_min_IC[i]);
         f_pol_IC[i] = pow(10,log10(gamma_e[i] * gamma_e[i] * f_pol[i]));
 
-        fprintf(freqrange,  "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", f_em_min[i], f_em_max[i], f_c[i], dfreqs[i],
-                f_em_min_IC[i], f_em_max_IC[i], f_pol_IC[i], dfreqs_polIC[i]);  //saves the frequency bins!
+        // fprintf(freqrange,  "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", f_em_min[i], f_em_max[i], f_c[i], dfreqs[i],
+        //         f_em_min_IC[i], f_em_max_IC[i], f_pol_IC[i], dfreqs_polIC[i]);  //saves the frequency bins!
     }
 
     A_orig = A_elecs[0]; //all elements the same to begin with
@@ -325,7 +325,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     {
         Ue_jetbase += Ne_e[i]*E_elecs[i]*Qe;
     }
-    printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
+    // printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
 
     // set bins with fewer than ten electrons to zero: prevents resolution from being limited
     cleanpop(Ne_e, ARRAY_SIZE, 10.0);
@@ -345,18 +345,18 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //becoming more transverse
     double Proj_theta_B[N_BLOCKS];
     //defining how far along the helix we are
-    int helix_counter;
-    sscanf(argv[2], "%d", &helix_counter); //taking input from command line how many 'days' we have been observing
+    int helix_counter = 0;
+    // sscanf(argv[2], "%d", helix_counter); //taking input from command line how many 'days' we have been observing
     //parameters for helix
     double t_helix = helix_counter*M_PI/32; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
     //Pi constant decided how quickly we sample along the helix -> timescale
     double phi_helix = 0;//M_PI/3; //phase shift, just an initial condition
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
 
-    int EVPA_rotation;
-    sscanf(argv[1], "%d", &EVPA_rotation); //taking input from command line if true begin EVPA rotation, if false do not
-    int DopDep;
-    sscanf(argv[3], "%d", &DopDep); //taking input from command line if true activate DopDep, if false do not
+    int EVPA_rotation = 0;
+    // sscanf(argv[1], "%d", EVPA_rotation); //taking input from command line if true begin EVPA rotation, if false do not
+    int DopDep = 1;
+    // sscanf(argv[3], "%d", DopDep); //taking input from command line if true activate DopDep, if false do not
 
     //now the Bfield vectors are rotated about both the y and x axis each block with a different theta_obs
     //these give the angles each block is at with respect to the direction of the jet:
@@ -439,8 +439,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
     }
 
-    int breakstep;
-    sscanf(argv[8], "%d", &breakstep);
+    int breakstep = 100;
+    // sscanf(argv[8], "%d", breakstep);
     //Full and zonal Stokes vector bins for Synchrotron and IC respectively
     double S_Stokes[N_BLOCKS][3][ARRAY_SIZE];
     memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
@@ -450,7 +450,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(S_StokesTotal_Sec, 0, sizeof(S_StokesTotal_Sec[0][0][0]) * breakstep * ARRAY_SIZE * 3);
     double S_Pi[ARRAY_SIZE];
     double S_PA[ARRAY_SIZE];
-    double S_P[ARRAY_SIZE];
+    // double S_P[ARRAY_SIZE];
     double ICS_Pi[ARRAY_SIZE];
     double ICS_PA[ARRAY_SIZE];
     double ICS_P[ARRAY_SIZE]; //for the total S + IC, have to think about adding powers with different frequency bin sizes
@@ -468,7 +468,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(S_StokesZTotal, 0, sizeof(S_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
     double IC_Pi[ARRAY_SIZE];
     double IC_PA[ARRAY_SIZE];
-    double IC_P[ARRAY_SIZE];
+    // double IC_P[ARRAY_SIZE];
     double zone_doppler;
     double q_theta;
     double zeta;
@@ -507,10 +507,10 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
     //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
-    int thread_id;
-    int task_id;
-    sscanf(argv[2], "%d", &thread_id);
-    sscanf(argv[7], "%d", &task_id);
+    int thread_id = 4;
+    int task_id = 8;
+    // sscanf(argv[2], "%d", thread_id);
+    // sscanf(argv[7], "%d", task_id);
     MTRand seedr = seedRand(42); //seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
     //MTRand seedr = seedRand(11); //fix random seed
     int nLT_sections = 30;
@@ -853,7 +853,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
     // Actual Jet emission calculation loop
-    printf("Beginning jet analysis... \n");
+    // printf("Beginning jet analysis... \n");
     while (x<L_jet)
     {
         time_begin = clock();
@@ -871,9 +871,9 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         {
             Ue_jetbase += Ne_e[i]*E_elecs[i]*Qe;
         }
-        printf("Ue = %.5e\n",Ue_jetbase);
-        printf("UB = %.5e\n",UB_jetbase);
-        printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
+        // printf("Ue = %.5e\n",Ue_jetbase);
+        // printf("UB = %.5e\n",UB_jetbase);
+        // printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
 
         //Jet section mixing here: if Rtan(theta_obs) > R_0/sqrt(N) then we start assigning new B-fields to edge zones and so on, equivalent to seeing emission from zones in section
         //behind and in front.
@@ -898,7 +898,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 }
                 //printf("i, zone_marker = %d \t  %d \n", i, marker_list[i]);
             }
-           printf("\n WARNING: Section Mixing has begun! \n");
+        //    printf("\n WARNING: Section Mixing has begun! \n");
         }
         /***************************************************************************************************/
 
@@ -1210,11 +1210,11 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 	    //fprintf(Xfile,"\t%.5e", P_X[i] * f_pol[i]);
             //fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B);
 
-            if (i==ARRAY_SIZE-1) //puts the outputs for the next jet section on a new line in files
-            {  
-               //fprintf(Xfile,"\n");
-               //fprintf(Proj_Bfile, "\n");
-            }
+            // if (i==ARRAY_SIZE-1) //puts the outputs for the next jet section on a new line in files
+            // {  
+            //    //fprintf(Xfile,"\n");
+            //    //fprintf(Proj_Bfile, "\n");
+            // }
         }
 
         //compute the synchrotron losses + IC LOSSES
@@ -1293,16 +1293,16 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
 
         nSteps+=1; //allows the number of jet sections to be determined
-        printf("nStep, dx, x, B, R: %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
+        // printf("nStep, dx, x, B, R: %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
 
         //save data needed at every jet section to solve line of sight opacity
-        fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
+        // fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
         
         /************************************/
         //Timing: to understand accurate cluster submission
-        time_end = clock();
-        time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
-        printf("Time spent this section: %.3f mins \n", time_spent/60);
+        // time_end = clock();
+        // time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
+        // printf("Time spent this section: %.3f mins \n", time_spent/60);
         /************************************/
 
         if (nSteps == breakstep) {
@@ -1342,17 +1342,17 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     }
 
 
-    double newbins[ARRAY_SIZE]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
-    for (n=0; n<ARRAY_SIZE; n++){
-        ICS_StokesTotal[n][0] = S_StokesTotal[n][0] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][0];
-        ICS_StokesTotal[n][1] = S_StokesTotal[n][1] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][1]; // ICS uses IC binning
-        ICS_StokesTotal[n][2] = S_StokesTotal[n][2] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][2];
-    }
+    // double newbins[ARRAY_SIZE]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
+    // for (n=0; n<ARRAY_SIZE; n++){
+    //     ICS_StokesTotal[n][0] = S_StokesTotal[n][0] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][0];
+    //     ICS_StokesTotal[n][1] = S_StokesTotal[n][1] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][1]; // ICS uses IC binning
+    //     ICS_StokesTotal[n][2] = S_StokesTotal[n][2] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][2];
+    // }
 
     for (n=0; n<ARRAY_SIZE; n++){ //multiplying F(nu) by nu to get nuF(nu), to plot Power instead: switch f_pol by dfreqs_pol, however this will require a different treatment of ICS_total
-        ICS_StokesTotal[n][0] *= f_pol[n];
-        ICS_StokesTotal[n][1] *= f_pol[n];
-        ICS_StokesTotal[n][2] *= f_pol[n];
+        // ICS_StokesTotal[n][0] *= f_pol[n];
+        // ICS_StokesTotal[n][1] *= f_pol[n];
+        // ICS_StokesTotal[n][2] *= f_pol[n];
 
         IC_StokesTotal[n][0] *= f_pol_IC[n];
         IC_StokesTotal[n][1] *= f_pol_IC[n];
@@ -1362,54 +1362,53 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         S_StokesTotal[n][1] *= f_pol[n];
         S_StokesTotal[n][2] *= f_pol[n];
 
-        for (h=0; h<N_BLOCKS; h++){
-             IC_StokesZTotal[h][n][0] *= f_pol_IC[n];
-             IC_StokesZTotal[h][n][1] *= f_pol_IC[n];
-             IC_StokesZTotal[h][n][2] *= f_pol_IC[n];
+    //     for (h=0; h<N_BLOCKS; h++){
+    //          IC_StokesZTotal[h][n][0] *= f_pol_IC[n];
+    //          IC_StokesZTotal[h][n][1] *= f_pol_IC[n];
+    //          IC_StokesZTotal[h][n][2] *= f_pol_IC[n];
 
-             S_StokesZTotal[h][n][0] *= f_pol[n];
-             S_StokesZTotal[h][n][1] *= f_pol[n];
-             S_StokesZTotal[h][n][2] *= f_pol[n];
-        }
+    //          S_StokesZTotal[h][n][0] *= f_pol[n];
+    //          S_StokesZTotal[h][n][1] *= f_pol[n];
+    //          S_StokesZTotal[h][n][2] *= f_pol[n];
+    //     }
     }
 
-    for (i = 0; i < N_BLOCKS; i++)
-    {
-      for (m = 0; m < ARRAY_SIZE; m++)
-      {
-        for (n = 0; n < 3; n++)
-        {
-          fprintf(IC_Z, "%f ", IC_StokesZTotal[i][m][n]);
-          fprintf(S_Z, "%f ", S_StokesZTotal[i][m][n]);
-        }
-        fprintf(IC_Z, "\n");
-        fprintf(S_Z, "\n");
-      }
-      fprintf(IC_Z, "\n");
-      fprintf(S_Z, "\n");
-    }
+    // for (i = 0; i < N_BLOCKS; i++)
+    // {
+    //   for (m = 0; m < ARRAY_SIZE; m++)
+    //   {
+    //     for (n = 0; n < 3; n++)
+    //     {
+    //     //   fprintf(IC_Z, "%f ", IC_StokesZTotal[i][m][n]);
+    //     //   fprintf(S_Z, "%f ", S_StokesZTotal[i][m][n]);
+    //     }
+    //     // fprintf(IC_Z, "\n");
+    //     // fprintf(S_Z, "\n");
+    //   }
+    // //   fprintf(IC_Z, "\n");
+    // //   fprintf(S_Z, "\n");
+    // }
 
 
     for (n=0; n<ARRAY_SIZE; n++){
-            IC_Pi[n] = sqrt(IC_StokesTotal[n][1]*IC_StokesTotal[n][1] + IC_StokesTotal[n][2]*IC_StokesTotal[n][2]) / IC_StokesTotal[n][0];
-            S_Pi[n] = sqrt(S_StokesTotal[n][1]*S_StokesTotal[n][1] + S_StokesTotal[n][2]*S_StokesTotal[n][2]) / S_StokesTotal[n][0];
-            ICS_Pi[n] = sqrt(ICS_StokesTotal[n][1]*ICS_StokesTotal[n][1] + ICS_StokesTotal[n][2]*ICS_StokesTotal[n][2]) / ICS_StokesTotal[n][0];
+            // IC_Pi[n] = sqrt(IC_StokesTotal[n][1]*IC_StokesTotal[n][1] + IC_StokesTotal[n][2]*IC_StokesTotal[n][2]) / IC_StokesTotal[n][0];
+            // S_Pi[n] = sqrt(S_StokesTotal[n][1]*S_StokesTotal[n][1] + S_StokesTotal[n][2]*S_StokesTotal[n][2]) / S_StokesTotal[n][0];
+            // // ICS_Pi[n] = sqrt(ICS_StokesTotal[n][1]*ICS_StokesTotal[n][1] + ICS_StokesTotal[n][2]*ICS_StokesTotal[n][2]) / ICS_StokesTotal[n][0];
 
-            IC_PA[n] = 0.5*atan2(IC_StokesTotal[n][2],IC_StokesTotal[n][1]);
-            S_PA[n] = 0.5*atan2(S_StokesTotal[n][2],S_StokesTotal[n][1]);
-            ICS_PA[n] = 0.5*atan2(ICS_StokesTotal[n][2],ICS_StokesTotal[n][1]);
+            // IC_PA[n] = 0.5*atan2(IC_StokesTotal[n][2],IC_StokesTotal[n][1]);
+            // S_PA[n] = 0.5*atan2(S_StokesTotal[n][2],S_StokesTotal[n][1]);
+            // ICS_PA[n] = 0.5*atan2(ICS_StokesTotal[n][2],ICS_StokesTotal[n][1]);
 
             IC_P[n] = IC_StokesTotal[n][0];
             S_P[n] = S_StokesTotal[n][0];
-            ICS_P[n] = ICS_StokesTotal[n][0];
+            // ICS_P[n] = ICS_StokesTotal[n][0];
 
-            fprintf(PI, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",S_Pi[n],S_PA[n],
-                   S_P[n],IC_Pi[n],IC_PA[n],IC_P[n],ICS_Pi[n],ICS_PA[n],ICS_P[n]);
-
+            // fprintf(PI, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",S_Pi[n],S_PA[n],
+            //        S_P[n],IC_Pi[n],IC_PA[n],IC_P[n],ICS_Pi[n],ICS_PA[n],ICS_P[n]);
     }
 
-    printf("The jet was divided into %d %s \n", nSteps, "section(s).");
-    return 0;
+    // printf("The jet was divided into %d %s \n", nSteps, "section(s).");
+    return 3;
 }
 
 
