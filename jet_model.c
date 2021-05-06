@@ -511,7 +511,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     int task_id;
     sscanf(argv[2], "%d", &thread_id);
     sscanf(argv[7], "%d", &task_id);
-    MTRand seedr = seedRand(42); //seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
+    MTRand seedr = seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
     //MTRand seedr = seedRand(11); //fix random seed
     int nLT_sections = 30;
 

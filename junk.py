@@ -39,12 +39,12 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
     #opdat = np.loadtxt('EBLOpacity.txt') #high energy gamma opacities for different z due to EBL
 
     #loading up data points for different blazars (need to change distances and redshift as well!!!)
-    d_Blazar = 1000E6*3.08E18 # pc in cm #276E6pc BL_Lac, 144E6 Mkn501, 131E6 Mkn421, 891E6 J2143, 1000E6 J0721, 1800E6 3C279
-    z = 0.2 #0.0686 BL-Lac, 0.034 Mkn501, 0.031 Mkn421, 0.211 J2143, 0.3 J0721, 0.536 3C279
+    d_Blazar = 1000E6 * 3.08E18 # pc in cm #1000E6 J0211, 1627E6 S5, 1789E6 TXS
+    z = 0.2 #0.2 J0211, 0.3365 TXS, 0.31 S5
     theta_obs=keydat[0,2]#2.8
     J0211_pts = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051_XMM.txt')
-    # J0211_pts2 = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051.txt')
-    # J0211_pts = np.concatenate([J0211_pts,J0211_pts2])
+    J0211_pts2 = np.loadtxt('data/new_data_sed_CGRaBSJ0211+1051.txt')
+    J0211_pts = np.concatenate([J0211_pts,J0211_pts2])
     S5_pts = np.loadtxt('data/tofit_flare_0716+016.txt')
     S5_pts2 = np.loadtxt('data/tofit_historical_0716+016.txt')
     S5_pts2 = np.insert(S5_pts2, 1, 0,axis=1)
@@ -82,7 +82,6 @@ def plot_SED(filename,keyfile,freqfile,IC=True, save=False): #plots SED with pol
 
 
     #define the bins
-    print(doppler_factor)
     frdata = np.loadtxt(freqfile)*doppler_factor#*doppler_factor#*gamma_bulk*2.8
     fq_mins = frdata[:array_size,0]
     fq_maxs = frdata[:array_size,1]
