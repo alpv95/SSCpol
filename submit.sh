@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-#SBATCH --job-name=TXS
+#SBATCH --job-name=S5
 ###SBATCH --output=current_%A_%a.out
 ###SBATCH --error=current_%A_%a.err
-#SBATCH --time=400:00
+#SBATCH --time=800:00
 ##SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=15
+#SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu=8G
 #SBATCH --partition=owners
 
@@ -21,5 +21,5 @@ ml gcc/8.1.0
 
 
 #python3 automateSED.py $SLURM_ARRAY_TASK_ID 7 1 90 1 6.0
-python3 -u fitter.py --method ps --blazar TXS
+python3 -u fitter.py --method direct --blazar S5flare
 

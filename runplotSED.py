@@ -40,7 +40,7 @@ for i in range(args.nworkers):
     subprocess.check_call(['./a.out', str(inpt[0]),str(inpt[1]),str(inpt[2]),str(inpt[3]),str(inpt[4]),str(inpt[5]),str(inpt[6]),str(inpt[7]),str(inpt[8]),str(inpt[9]) ])
 
 #plot results
-junk.plot_SED(args.dir + "/pi0_0.txt",args.dir + "/keyparams0_0.txt",args.dir + "/freqrange0_0.txt")
+# junk.plot_SED(args.dir + "/pi0_0.txt",args.dir + "/keyparams0_0.txt",args.dir + "/freqrange0_0.txt")
 
 #then run this once all workers have finished, useful if nworkers > 1
 subprocess.check_call('cat ' + args.dir + '/pi' + str(task_id) + '_* > ' + args.dir + '/pi' + str(args.theta_obs) + '.txt', shell=True) #combine all the output fil    es in order of inputs

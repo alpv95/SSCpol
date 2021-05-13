@@ -30,12 +30,12 @@ int i, l, m, n, o, p, g, h, nn; //some looping parameters
 double c, d, q;
 int dx_set; // use to define smallest non zero population
 
-int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *f_pol) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
+int jetmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_StokesTotal, double *f_pol_IC, double *f_pol) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
     // Jet Parameters
     double W_j = argv[0]; //1.3E37; // W jet power in lab frame. Should be OBSERVED POWER
     double L_jet = 5E20; // length in m in the fluid frame
-    double E_min = 5.11E6; // Minimum electron energy 
+    double E_min = argv[8]; //5.11E6; // Minimum electron energy 
     double E_max = argv[1]; //1.7E10; // Energy of the ECO in eV 
     double alpha = argv[2]; //1.85; // PL index of electrons
     double theta_open_p = argv[3]; //40.0; // opening angle of the jet in the fluid frame 
@@ -45,8 +45,8 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
     double theta_obs = argv[6];  // observers angle to jet axis in rad 
     double A_eq = argv[7]; //1.0
-    int N_BLOCKS = 1; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
-    int N_RINGS = 0; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
+    int N_BLOCKS = argblocks[0]; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
+    int N_RINGS = argblocks[1]; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
     int SSC = 1;
     // sscanf(argv[4], "%lf", theta_obs);
     // sscanf(argv[5], "%d", N_BLOCKS);
@@ -444,30 +444,30 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
     //Full and zonal Stokes vector bins for Synchrotron and IC respectively
     double S_Stokes[N_BLOCKS][3][ARRAY_SIZE];
     memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double S_StokesTotal[ARRAY_SIZE][3];
-    memset(S_StokesTotal, 0, sizeof(S_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    // double S_StokesTotal[ARRAY_SIZE][3];
+    // memset(S_StokesTotal, 0, sizeof(S_StokesTotal[0][0])* ARRAY_SIZE * 3);
     double S_StokesTotal_Sec[breakstep][ARRAY_SIZE][3];
     memset(S_StokesTotal_Sec, 0, sizeof(S_StokesTotal_Sec[0][0][0]) * breakstep * ARRAY_SIZE * 3);
-    double S_Pi[ARRAY_SIZE];
-    double S_PA[ARRAY_SIZE];
+    // double S_Pi[ARRAY_SIZE];
+    // double S_PA[ARRAY_SIZE];
     // double S_P[ARRAY_SIZE];
-    double ICS_Pi[ARRAY_SIZE];
-    double ICS_PA[ARRAY_SIZE];
-    double ICS_P[ARRAY_SIZE]; //for the total S + IC, have to think about adding powers with different frequency bin sizes
-    double ICS_StokesTotal[ARRAY_SIZE][3];
-    memset(ICS_StokesTotal, 0, sizeof(ICS_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    // double ICS_Pi[ARRAY_SIZE];
+    // double ICS_PA[ARRAY_SIZE];
+    // double ICS_P[ARRAY_SIZE]; //for the total S + IC, have to think about adding powers with different frequency bin sizes
+    // double ICS_StokesTotal[ARRAY_SIZE][3];
+    // memset(ICS_StokesTotal, 0, sizeof(ICS_StokesTotal[0][0])* ARRAY_SIZE * 3);
 
     //double IC_Stokes[N_BLOCKS][3][ARRAY_SIZE];
     //memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double IC_StokesTotal[ARRAY_SIZE][3];
-    memset(IC_StokesTotal, 0, sizeof(IC_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    // double IC_StokesTotal[ARRAY_SIZE][3];
+    // memset(IC_StokesTotal, 0, sizeof(IC_StokesTotal[0][0])* ARRAY_SIZE * 3);
 
     double IC_StokesZTotal[N_BLOCKS][ARRAY_SIZE][3];
     memset(IC_StokesZTotal, 0, sizeof(IC_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
     double S_StokesZTotal[N_BLOCKS][ARRAY_SIZE][3];
     memset(S_StokesZTotal, 0, sizeof(S_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double IC_Pi[ARRAY_SIZE];
-    double IC_PA[ARRAY_SIZE];
+    // double IC_Pi[ARRAY_SIZE];
+    // double IC_PA[ARRAY_SIZE];
     // double IC_P[ARRAY_SIZE];
     double zone_doppler;
     double q_theta;
@@ -511,7 +511,7 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
     int task_id = 8;
     // sscanf(argv[2], "%d", thread_id);
     // sscanf(argv[7], "%d", task_id);
-    MTRand seedr = seedRand(42); //seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
+    MTRand seedr = seedRand(argblocks[2]); //seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
     //MTRand seedr = seedRand(11); //fix random seed
     int nLT_sections = 30;
 
@@ -1159,9 +1159,9 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
             for (n=0; n<ARRAY_SIZE; n++){
                 // Might want zone_doppler ^ 3 for a continuous jet
                 if (n-binshiftIC >= 0 && n-binshiftIC < ARRAY_SIZE){
-                    IC_StokesTotal[n][0] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
-                    IC_StokesTotal[n][1] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
-                    IC_StokesTotal[n][2] += gsl_vector_get(IC_Stokes[h][2], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n + 0*ARRAY_SIZE] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n + 1*ARRAY_SIZE] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n + 2*ARRAY_SIZE] += gsl_vector_get(IC_Stokes[h][2], n-binshiftIC) * pow(zone_doppler,4) * dx;
 
                     IC_StokesZTotal[h][n][0] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
                     IC_StokesZTotal[h][n][1] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
@@ -1334,9 +1334,9 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
 
     for (i=0; i<breakstep; i++){
         for (l=0; l<ARRAY_SIZE; l++){
-            S_StokesTotal[l][0] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]); // not quite right since binshifts, but approx ok for purposes of fit
-            S_StokesTotal[l][1] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]); //should address binshifts properly tho as it affects polarization of mm and below
-            S_StokesTotal[l][2] += S_StokesTotal_Sec[i][l][2] * exp(-tau[i][l]);
+            S_StokesTotal[l + 0*ARRAY_SIZE] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]); // not quite right since binshifts, but approx ok for purposes of fit
+            S_StokesTotal[l + 1*ARRAY_SIZE] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]); //should address binshifts properly tho as it affects polarization of mm and below
+            S_StokesTotal[l + 2*ARRAY_SIZE] += S_StokesTotal_Sec[i][l][2] * exp(-tau[i][l]);
             //printf("TAU %d\t%d\t%.5e\n", i, l, tau[i][l]);
         }
     }
@@ -1354,13 +1354,13 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
         // ICS_StokesTotal[n][1] *= f_pol[n];
         // ICS_StokesTotal[n][2] *= f_pol[n];
 
-        IC_StokesTotal[n][0] *= f_pol_IC[n];
-        IC_StokesTotal[n][1] *= f_pol_IC[n];
-        IC_StokesTotal[n][2] *= f_pol_IC[n];
+        IC_StokesTotal[n + 0*ARRAY_SIZE] *= f_pol_IC[n];
+        IC_StokesTotal[n + 1*ARRAY_SIZE] *= f_pol_IC[n];
+        IC_StokesTotal[n + 2*ARRAY_SIZE] *= f_pol_IC[n];
 
-        S_StokesTotal[n][0] *= f_pol[n];
-        S_StokesTotal[n][1] *= f_pol[n];
-        S_StokesTotal[n][2] *= f_pol[n];
+        S_StokesTotal[n + 0*ARRAY_SIZE] *= f_pol[n];
+        S_StokesTotal[n + 1*ARRAY_SIZE] *= f_pol[n];
+        S_StokesTotal[n + 2*ARRAY_SIZE] *= f_pol[n];
 
     //     for (h=0; h<N_BLOCKS; h++){
     //          IC_StokesZTotal[h][n][0] *= f_pol_IC[n];
@@ -1399,8 +1399,8 @@ int jetmodel(double *argv, double *IC_P, double *S_P, double *f_pol_IC, double *
             // S_PA[n] = 0.5*atan2(S_StokesTotal[n][2],S_StokesTotal[n][1]);
             // ICS_PA[n] = 0.5*atan2(ICS_StokesTotal[n][2],ICS_StokesTotal[n][1]);
 
-            IC_P[n] = IC_StokesTotal[n][0];
-            S_P[n] = S_StokesTotal[n][0];
+            // IC_P[n] = IC_StokesTotal[n][0];
+            // S_P[n] = S_StokesTotal[n][0];
             // ICS_P[n] = ICS_StokesTotal[n][0];
 
             // fprintf(PI, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",S_Pi[n],S_PA[n],
