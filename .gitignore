@@ -1,0 +1,4 @@
+*.out
+*.so
+.ipynb_checkpoints
+__pycache__
