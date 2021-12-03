@@ -77,13 +77,14 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     char thread_idst[10];
     char task_idst[10];
     char results_dir[15];
+    printf("Badius at jet base: %.5e \n", R);
     sscanf(argv[2], "%s", thread_idst);
     sscanf(argv[7], "%s", task_idst);
     sscanf(argv[9], "%s", results_dir);
     strcat(task_idst,"_");
     strcat(task_idst,thread_idst);
     strcat(task_idst,".txt");			
-		
+
     char frange[40] = "/freqrange";
     strcat(frange,task_idst);
     prepend(frange, results_dir);
@@ -104,7 +105,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     char sz[40] = "/S_Z";
     strcat(sz,task_idst);
     prepend(sz, results_dir);
-
+    
 		
     // Define some files to store output data
     FILE *freqrange, *basicdata, *keyparams, *PI, *IC_Z, *S_Z; //, *Xfile;
