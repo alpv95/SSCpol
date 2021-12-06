@@ -62,7 +62,7 @@ int jetmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_Sto
 
     // Read in any required data (only Bessel Functions for now)
     FILE *FGfile;
-    FGfile = fopen("FG.txt","r"); //Bessel Functions for Synchrotron
+    FGfile = fopen("src/FG.txt","r"); //Bessel Functions for Synchrotron
 
     double FG[75][3]; //Bessel Functions F, G and FG
     for (m=0; m<75; m++)

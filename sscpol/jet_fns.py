@@ -2,7 +2,7 @@ import numpy as np
 import ctypes
 from numpy.ctypeslib import ndpointer
 
-_model = ctypes.CDLL('func_model.so')
+_model = ctypes.CDLL('lib/jetmodel.so')
 _model.jetmodel.argtypes = [ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
                             ndpointer(ctypes.c_int, flags="C_CONTIGUOUS"),
                           ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
