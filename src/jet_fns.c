@@ -3,12 +3,21 @@
 #include <string.h>
 #include <math.h>
 #include "jet_fns.h"
+#include <assert.h>
+#ifdef DEBUG
+#define PRINT(message, parameter) \
+do { \
+    printf(message, parameter); \
+} while (0)
+#else
+#define PRINT(message, parameter)
+#endif
 
 /* Program to store some useful Lorentz transform and jets fns */
 
 //Calculates the area of intersection between circle of radius R (jet radius) and circle of radius x
 double circle_area(double d, double dx, double x, double R){
-    // d is the distance between centre points
+    // d is the distance between centre points of the two circles
     if (x <= R) {
        double area;
        double r = x;
@@ -40,14 +49,14 @@ double circle_area(double d, double dx, double x, double R){
            return area = pow(R,2) * acos(d_1/R) - d_1 * sqrt(pow(R,2) - pow(d_1,2)) + pow(r,2) * acos(d_2/r) - d_2 * sqrt(pow(r,2) - pow(d_2,2)) - area_low; //annulus area
        }
     } else {
-	double area;
+	      double area;
         double r = R;
         double Rbig = x; //required for annulus calculation
-	double Rbig_low = x-dx;
+	      double Rbig_low = x-dx;
 
-	if (d <= Rbig - r){ //whole emission circle fits in jet circle
-	   printf("radius of emission bigger than jet radius: ERROR");
-           return 0;
+	      if (d <= Rbig - r){ //whole emission circle fits in jet circle
+	        printf("radius of emission bigger than jet radius: ERROR");
+          return 0;
         }
         else { //emission circle overlaps jet circle, should always be annulus in this case
            double d_1 = (pow(Rbig,2) - pow(r,2) + pow(d,2)) / (2 * d);
@@ -64,12 +73,11 @@ double circle_area(double d, double dx, double x, double R){
           
 
            return area = pow(Rbig,2) * acos(d_1/Rbig) - d_1 * sqrt(pow(Rbig,2) - pow(d_1,2)) + pow(r,2) * acos(d_2/r) - d_2 * sqrt(pow(r,2) - pow(d_2,2)) - area_low; //annulus area
-       }
+        }
 	
     }
 
 }
-
 
 void arange(double array[], int nvals)
 /* Analogy to numpy.linspace */
@@ -269,14 +277,13 @@ int findminelementNO0(double array[], int size_of_array)
   int i, element=size_of_array-1; //need -1 as array size x labelled 0->x-1
   double min = 1E300; //initialise BIG
 
-  for (i=0; i<size_of_array; i++)
-    {
-      if (array[i]<min && array[i]!=0.0) //needs to be non zero or code won't work!
-	{
-	  //printf("%.2e\t%s\t%.2e\t%d \n", array[i], "<", min, element);
-	  min = array[i];
-	  element = i;
-	}
+  for (i=0; i<size_of_array; i++){
+        if (array[i]<min && array[i]!=0.0) //needs to be non zero or code won't work!
+        {
+        //printf("%.2e\t%s\t%.2e\t%d \n", array[i], "<", min, element);
+        min = array[i];
+        element = i;
+        }
     }
   return element;
 }
@@ -349,6 +356,7 @@ float lorentz(float voverc)
 double lortovel(double lor)
 {
   double ans;
+  assert (lor>=1);
   ans = pow((1.0-1.0/(lor*lor)), 0.5);
   return (ans);
 }

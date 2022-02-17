@@ -19,6 +19,9 @@ all: $(LTARGET)
 debug: CFLAGS += -DDEBUG -g
 debug: all
 
+parallel: CFLAGS += -fopenmp
+parallel: all
+
 $(ODIR)/%.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS) $(CPPFLAGS) 
 
