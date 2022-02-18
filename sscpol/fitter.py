@@ -5,10 +5,12 @@ from scipydirect import minimize as minimize_direct
 from scipy.optimize import minimize
 import pyswarms as ps
 import multiprocessing as mp
+import pickle
+from os.path import exists
 
 
 class SSC_Fitter(object):
-    def __init__(self, blazar, method="standard", nblocks=1, seed=15,):
+    def __init__(self, blazar, method="standard", nblocks=1, seed=100, nprocs=20, rand_gamma=0):
         if blazar not in ["J2011", "TXS", "S5low", "S5flare", "J2011flare"]:
             raise ValueError("blazar must be one of J2011, TXS, S5low, S5flare")
         if blazar == "J2011":
@@ -60,24 +62,29 @@ class SSC_Fitter(object):
         self.method = method
         self.nblocks = nblocks
         self.seed_n = seed
+        self.blazar = blazar
+        self.n_procs = nprocs
+        self.rand_gamma = rand_gamma
+        self.bounds = [(36.3, 39),(9.7,13),(1.65,2.05),(10,45),(7,30),(-4.7,-3.1),(0.1,6),(0.8,1.4),(5.72,6.8)]
+        self.filename = 'data/checkpoints/'+str(self.blazar)+'_'+str(self.nblocks)+'.p'
 
     def run(self,):
-        bounds = [(36.3, 39),(9.7,13),(1.65,2.05),(10,45),(7,30),(-4.7,-3.1),(0.1,6),(0.8,1.4),(5.72,6.8)]
-        print("bounds: ", bounds)
+        print("bounds: ", self.bounds)
         
         if self.method == 'standard':
-            res = minimize(self.loglike, self.x0, method='Nelder-Mead', bounds=bounds, options={'disp': True})
+            res = minimize(self.loglike, self.x0, method='Nelder-Mead', bounds=self.bounds, options={'disp': True})
         elif self.method == 'cross_entropy':
-            res = self.cross_entropy_method(bounds)
+            res = self.cross_entropy_method()
         elif self.method == 'ps':
             options = {'c1': 0.5, 'c2': 0.3, 'w':0.9}
             # Call instance of GlobalBestPSO
-            optimizer = ps.single.GlobalBestPSO(n_particles=15, dimensions=len(bounds), bounds=(np.array([b[0] for b in bounds]),np.array([b[1] for b in bounds])),
-                                        options=options)
+            optimizer = ps.single.GlobalBestPSO(n_particles=15, dimensions=len(self.bounds), 
+                                                bounds=(np.array([b[0] for b in self.bounds]),np.array([b[1] for b in self.bounds])),
+                                                options=options)
             # Perform optimization
             res = optimizer.optimize(self.loglike, iters=10000, n_processes=15)
         elif self.method == "direct":
-            res = minimize_direct(self.loglike, bounds, fglobal=1.0, fglper=(0.2*100), disp=True, maxt=10000)
+            res = minimize_direct(self.loglike, self.bounds, fglobal=1.0, fglper=(0.2*100), disp=True, maxt=10000)
 
         print("res: ", res)
         return res
@@ -90,7 +97,7 @@ class SSC_Fitter(object):
         params[8] = 10**params[8]
 
         seed = np.random.RandomState().randint(self.seed_n)
-        sync, ic = run_ssc(params, nblocks=self.nblocks, seed=seed)
+        sync, ic = run_ssc(params, nblocks=self.nblocks, seed=seed, rand_gamma=self.rand_gamma)
 
         dist_factor = 1.0E7*(1.0/((4.0*np.pi*self.d_Blazar**2.0)*(1.0+self.z)**2.0)) 
         loss = np.sum((self.data[:,2] - np.log10(np.interp(10**self.data[:,0], ic[0,:], ic[1,:] * dist_factor) 
@@ -99,16 +106,21 @@ class SSC_Fitter(object):
             print('LOSS: ', loss, "   ", params[2], '\n')
             return np.array([loss])
         print('LOSS: ', loss, '\n')
-        return loss
+        return loss, sync, ic
 
-    def cross_entropy_method(self, bounds, n_samples=50, n_elite=15, max_k=200,):
-        mu = self.x0
-        bounds = np.array(bounds)
-        Sigma = np.diag((bounds[:,1] - bounds[:,0]) / 50)
-        with mp.Pool(processes=20) as pool:
-                init_likelihoods = pool.map(self.loglike, [mu]*20)
-        current_mean_likelihood = np.mean(init_likelihoods)
-        print("Init: ", current_mean_likelihood)
+    def get_checkpoint(self):
+        if exists(self.filename):
+            return pickle.load(open(self.filename, 'rb'))
+        else:
+            return self.x0, np.diag((np.array(self.bounds)[:,1] - np.array(self.bounds)[:,0]) / 50)
+    
+    def save_checkpoint(self, mu, Sigma):
+        pickle.dump((mu, Sigma), open(self.filename, 'wb'))
+
+    def cross_entropy_method(self, n_samples=60, n_elite=15, max_k=5,):
+        bounds = np.array(self.bounds)
+        current_mean_likelihood = 1000
+        mu, Sigma = self.get_checkpoint()
 
         sample_buffer = []
         likelihood_buffer = []
@@ -121,9 +133,10 @@ class SSC_Fitter(object):
             samples = np.array([np.clip(s, bounds[:,0], bounds[:,1]) for s in samples])
 
             #Evaluate the likelihood of each sample in parallel with multiprocessing using the loglikelihood function
-            with mp.Pool(processes=20) as pool:
-                log_likelihoods = pool.map(self.loglike, samples)
+            with mp.Pool(processes=self.n_procs) as pool:
+                results = pool.map(self.loglike, samples)
 
+            log_likelihoods, syncs, ics = zip(*results)
             mask = np.isfinite(log_likelihoods)
             log_likelihoods = [l for i,l in enumerate(log_likelihoods) if mask[i]]
             samples = samples[mask]
@@ -161,7 +174,16 @@ class SSC_Fitter(object):
             print("current_mean_likelihood: ", current_mean_likelihood)
             print("current mean and Sigma: ", repr(mu), repr(Sigma))
 
-        return current_mean_likelihood, mu, Sigma, 
+            self.save_checkpoint(mu, Sigma)
+
+            if k == max_k - 1: #last iteration
+                #save syncs and ics as a joint numpy array
+                syncs = np.array(syncs)
+                ics = np.array(ics)
+                np.save('data/fits/syncs_'+str(self.blazar)+'_'+str(self.nblocks)+'.npy', syncs)
+                np.save('data/fits/ics_'+str(self.blazar)+'_'+str(self.nblocks)+'.npy', ics)
+
+        return current_mean_likelihood, mu, Sigma
 
 
 

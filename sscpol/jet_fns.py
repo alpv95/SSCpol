@@ -20,7 +20,7 @@ def R_0(E_j, gamma, B0, A_eq = 1):
     ans = sqrt**0.5
     return ans
 
-def run_ssc(params, nblocks=1, seed=42):
+def run_ssc(params, nblocks=1, seed=42, rand_gamma=0):
     '''
     Input: [W_j, E_max, alpha, theta_open_p, gamma_bulk, B0, theta_obs, A_eq, E_min]
     Output: IC_stokes, S_stokes,
@@ -28,7 +28,7 @@ def run_ssc(params, nblocks=1, seed=42):
     params = np.squeeze(np.array(params))     
     IC_stokes, S_stokes, fIC, fS =  np.zeros(50*3), np.zeros(50*3), np.empty(50), np.empty(50)
     nrings =[0,1,2,3,4,5,6][[1,7,19,37,61,91,127].index(nblocks)]
-    blocks = np.array([nblocks, nrings, seed], dtype=np.int32)
+    blocks = np.array([nblocks, nrings, seed, rand_gamma], dtype=np.int32)
 
     _model.jetmodel(params, blocks, IC_stokes, S_stokes, fIC, fS)
     S_stokes = S_stokes.reshape((3,50))

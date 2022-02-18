@@ -39,11 +39,11 @@ const double ARRAY_SIZE_D = 50.0; // use to set log ratios, should be the same a
 int i, l, m, n, o, p, g, h, nn;   //some looping parameters
 double c, d, q;
 int dx_set; // use to define smallest non zero population
-#ifdef DEBUG
-int SSC = 0; // SSC off for debugging
-#else
+// #ifdef DEBUG
+// int SSC = 0; // SSC off for debugging
+// #else
 int SSC = 1; //SSC on by default
-#endif
+// #endif
 
 int jetmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_StokesTotal, double *f_pol_IC, double *f_pol) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
@@ -999,7 +999,7 @@ int jetmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_Sto
             {
                 effective_alpha[l] = 8.41283e+01;
             }
-            if (nSteps == 0)
+            if (nSteps == 99)
             {
                 PRINT("l %d \n", l);
                 PRINT("effective alpha %.5e\n", effective_alpha[l]);
@@ -1115,9 +1115,15 @@ int jetmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_Sto
             zone_doppler = doppler(beta_bulk, theta_tot[h]);
             //difference between bin boundaries in logspace:
             logdif = log10(f_pol_IC[1]) - log10(f_pol_IC[0]);
+            //adjust zone_doppler with magnetic field z value as in Marscher
+            double adjust = 1.;
+            if (argblocks[3] == 1)
+            {
+                adjust = pow(B_2[nLT_sections/2][h],2) / 0.33333;
+            }
             binshiftIC = (int)round(log10(zone_doppler / doppler_factor) / logdif); //the number of bins one moves across (relative to shift of bins which already takes place)
             logdif = log10(f_pol[1]) - log10(f_pol[0]);
-            binshiftS = (int)round(log10(zone_doppler / doppler_factor) / logdif);
+            binshiftS = (int)round(log10(zone_doppler * adjust / doppler_factor) / logdif);
             //printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
             //printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
 
