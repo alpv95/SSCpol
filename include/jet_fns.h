@@ -1,6 +1,16 @@
 #ifndef jet_fns_h
 #define jet_fns_h
+#include <gsl/gsl_matrix.h>
 
+void calculate_alpha(double* dN_dE, double* E_elecs, double* effective_alpha);
+void set_SSC_matrix(gsl_matrix** A, const size_t N_BLOCKS, double *f_pol,
+                    double *f_pol_IC,
+                    double *B_effectives,
+                    double* E_elecs, double* E_elec_min, double* E_elec_max,
+                    double* dEe, double* effective_alpha,
+                    double *unitalign0, double *unitalign1, double *unitalign2,
+                    double *unitalign3, double *unitalign4, double *unitalign5,
+                    double *unitalign6);
 double circle_area(double th, double dx, double x, double R);
 void arange(double array[], int nvals);
 void log10spaceWithMidpoints(double *bounds, double *midpoints, double start, double end, int no);

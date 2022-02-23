@@ -66,7 +66,7 @@ class SSC_Fitter(object):
         self.n_procs = nprocs
         self.rand_gamma = rand_gamma
         self.bounds = [(36.3, 39),(9.7,13),(1.65,2.05),(10,45),(7,30),(-4.7,-3.1),(0.1,6),(0.8,1.4),(5.72,6.8)]
-        self.filename = 'data/checkpoints/'+str(self.blazar)+'_'+str(self.nblocks)+'.p'
+        self.filename = 'data/checkpoints/'+str(self.blazar)+'_'+str(self.nblocks)+'_g'+str(self.rand_gamma)+'.p'
 
     def run(self,):
         print("bounds: ", self.bounds)
@@ -110,6 +110,7 @@ class SSC_Fitter(object):
 
     def get_checkpoint(self):
         if exists(self.filename):
+            print("Checkpoint found, loading...")
             return pickle.load(open(self.filename, 'rb'))
         else:
             return self.x0, np.diag((np.array(self.bounds)[:,1] - np.array(self.bounds)[:,0]) / 50)
@@ -117,7 +118,7 @@ class SSC_Fitter(object):
     def save_checkpoint(self, mu, Sigma):
         pickle.dump((mu, Sigma), open(self.filename, 'wb'))
 
-    def cross_entropy_method(self, n_samples=60, n_elite=15, max_k=5,):
+    def cross_entropy_method(self, n_samples=60, n_elite=15, max_k=12,):
         bounds = np.array(self.bounds)
         current_mean_likelihood = 1000
         mu, Sigma = self.get_checkpoint()
@@ -180,8 +181,8 @@ class SSC_Fitter(object):
                 #save syncs and ics as a joint numpy array
                 syncs = np.array(syncs)
                 ics = np.array(ics)
-                np.save('data/fits/syncs_'+str(self.blazar)+'_'+str(self.nblocks)+'.npy', syncs)
-                np.save('data/fits/ics_'+str(self.blazar)+'_'+str(self.nblocks)+'.npy', ics)
+                np.save('data/fits/syncs_'+str(self.blazar)+'_'+str(self.nblocks)+'_g'+str(self.rand_gamma)+'.npy', syncs)
+                np.save('data/fits/ics_'+str(self.blazar)+'_'+str(self.nblocks)+'_g'+str(self.rand_gamma)+'.npy', ics)
 
         return current_mean_likelihood, mu, Sigma
 

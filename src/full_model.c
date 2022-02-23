@@ -12,11 +12,7 @@
 #include "jet_fns.h"
 #include "mtwister.h" //random number generation
 #include <time.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_cblas.h>
-
+#include <omp.h>
 
 #define Me_EV 0.511E6 //electron rest energy
 #define C 3.0E8 //speed of light
@@ -24,35 +20,48 @@
 #define Me 9.11E-31 //electron mass kg
 #define H 6.63E-34 //Plancks constant
 
-const int ARRAY_SIZE = 50; // sets the number of synchrotron & SSC bins
+#define STR_PRINT(x) #x
+#ifdef DEBUG
+#define PRINT(message, parameter)   \
+    do                              \
+    {                               \
+        printf(message, parameter); \
+    } while (0)
+#else
+#define PRINT(message, parameter)
+#endif
+
+const size_t ARRAY_SIZE = 50; // sets the number of synchrotron & SSC bins
 const double ARRAY_SIZE_D = 50.0; // use to set log ratios, should be the same as above line but with .0
-int i, l, m, n, o, p, g, h, nn; //some looping parameters
+int i, l, m, n, o, p, g, h; //some looping parameters
 double c, d, q;
 int dx_set; // use to define smallest non zero population
 
-int main(int argc,char* argv[]) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
+size_t SSC = 1; //SSC on by default
+size_t nLT_sections = 30;
+
+int fullmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_StokesTotal, double *f_pol_IC, double *f_pol) //argc is integer number of arguments passed, argv[0] is program name, argv[1..n] are arguments passed in string format
 {
-    // Jet Parameters 1.82518e+37,1.67180e+11,1.88273e+00, 5.19613e+01, 1.24718e+01, 1.64365e-04,2.67348e+00,1.11467e+00
-    double W_j = 1.82518e+37; // W jet power in lab frame. Should be OBSERVED POWER
+    // Jet Parameters
+    double W_j = argv[0]; //1.3E37; // W jet power in lab frame. Should be OBSERVED POWER
     double L_jet = 5E20; // length in m in the fluid frame
-    double E_min = 5.11E6; // Minimum electron energy 
-    double E_max = 1.67180e+11; // Energy of the ECO in eV 
-    double alpha = 1.88273e+00; // PL index of electrons
-    double theta_open_p = 5.19613e+01; // opening angle of the jet in the fluid frame 
-    double gamma_bulk = 1.24718e+01; // bulk Lorentz factor of jet material
-    double B = 1.64365e-04, B0 = 1.64365e-04; // B-field at jet base
+    double E_min = argv[8]; //5.11E6; // Minimum electron energy 
+    double E_max = argv[1]; //1.7E10; // Energy of the ECO in eV 
+    double alpha = argv[2]; //1.85; // PL index of electrons
+    double theta_open_p = argv[3]; //40.0; // opening angle of the jet in the fluid frame 
+    double gamma_bulk = argv[4]; //16; // bulk Lorentz factor of jet material
+    double B = argv[5], B0 = argv[5]; //1E-4; // B-field at jet base
     double R0 = 0.0, R = 0.0;  // Radius of the jet at the base 3.32 works fairly well 
     double B_prev = 0.0; // changing parameters of the jet-initialise. R prev corrects for increasing jet volume 
-    double theta_obs;  // observers angle to jet axis in rad 
-    double A_eq = 1.11467e+00;
-    int N_BLOCKS; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
-    int N_RINGS; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
-    int SSC;
-    sscanf(argv[4], "%lf", &theta_obs);
-    sscanf(argv[5], "%d", &N_BLOCKS);
-    sscanf(argv[6], "%d", &N_RINGS);
-    sscanf(argv[10], "%d", &SSC);
-    printf("Jet Parameters: %.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", W_j, E_max, alpha, theta_open_p, gamma_bulk, B0, theta_obs, A_eq);
+    double theta_obs = argv[6];  // observers angle to jet axis in rad 
+    double A_eq = argv[7]; //1.0
+    int N_BLOCKS = argblocks[0]; // for the TEMZ model, can have 1,7,19,37,61,91,127 blocks, (rings 0,1,2,3,4,5,6)
+    int N_RINGS = argblocks[1]; // up to 6 rings possible atm, must choose number of rings corresponding to number of zones
+    // sscanf(argv[4], "%lf", theta_obs);
+    // sscanf(argv[5], "%d", N_BLOCKS);
+    // sscanf(argv[6], "%d", N_RINGS);
+    // sscanf(argv[10], "%d", SSC);
+    printf("Jet Parameters: %.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", W_j, E_max, alpha, theta_open_p, gamma_bulk, B0, theta_obs, A_eq, E_min);
 
     // Define radius at jet base
     R0 = R_0(W_j*(3.0/4.0), A_eq, gamma_bulk, B0); //assumes equipartition fraction 1.0 usually
@@ -62,7 +71,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     // Read in any required data (only Bessel Functions for now)
     FILE *FGfile;
-    FGfile = fopen("FG.txt","r"); //Bessel Functions for Synchrotron
+    FGfile = fopen("src/FG.txt","r"); //Bessel Functions for Synchrotron
 
     double FG[75][3]; //Bessel Functions F, G and FG
     for (m=0; m<75; m++)
@@ -72,55 +81,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
            FG[m][1] = c;
            FG[m][2] = d;
     }
-
-    // Output filenames for cluster
-    char thread_idst[10];
-    char task_idst[10];
-    char results_dir[15];
-    printf("Badius at jet base: %.5e \n", R);
-    sscanf(argv[2], "%s", thread_idst);
-    sscanf(argv[7], "%s", task_idst);
-    sscanf(argv[9], "%s", results_dir);
-    strcat(task_idst,"_");
-    strcat(task_idst,thread_idst);
-    strcat(task_idst,".txt");			
-
-    char frange[40] = "/freqrange";
-    strcat(frange,task_idst);
-    prepend(frange, results_dir);
-    char bdata[40] = "/basicdata";
-    strcat(bdata,task_idst);
-    prepend(bdata, results_dir);
-    char kparams[40] = "/keyparams";
-    strcat(kparams,task_idst);
-    prepend(kparams, results_dir);
-    //char Edensity[30] = "results/energydensity";
-    //strcat(Edensity,task_idst);
-    char testfil[40] = "/pi";
-    strcat(testfil,task_idst);
-    prepend(testfil, results_dir);
-    char icz[40] = "/IC_Z";
-    strcat(icz,task_idst);
-    prepend(icz, results_dir);
-    char sz[40] = "/S_Z";
-    strcat(sz,task_idst);
-    prepend(sz, results_dir);
-    
-		
-    // Define some files to store output data
-    FILE *freqrange, *basicdata, *keyparams, *PI, *IC_Z, *S_Z; //, *Xfile;
-
-    IC_Z = fopen(icz, "w");
-    S_Z = fopen(sz, "w");
-    freqrange = fopen(frange, "w");//store frequency bin boundaries
-    basicdata = fopen(bdata, "w"); //store B, x, R etc
-    keyparams = fopen(kparams, "w"); //store Lj, gamma_bulk, theta_obs and theta_open
-    PI = fopen(testfil,"w");
-    //energydensity = fopen(Edensity, "w");
-    //Proj_Bfile = fopen("Proj_Bfile.txt", "w"); //proj/ected B field onto plane of the sky for each section
-    //block_thetafile = fopen("block_thetafile.txt","w"); //saves the angle to the line of sight of each block
-    //Xfile = fopen("Xfile.txt","w");
-    fprintf(keyparams, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%d\t%d \n", W_j, gamma_bulk, theta_obs, theta_open_p, alpha, B, E_max, N_BLOCKS, ARRAY_SIZE);
 
     //define some useful parameters to gauge progress
     int nSteps = 0; //how many sections the jet has broken down into
@@ -218,8 +178,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     memset(dfactor_para, 0.0, N_BLOCKS*N_BLOCKS*ARRAY_SIZE*sizeof(dfactor_para[0][0][0]));
     //double dfactor_perptest[N_BLOCKS][ARRAY_SIZE];
     //memset(dfactor_perptest, 0.0, N_BLOCKS*ARRAY_SIZE*sizeof(dfactor_perptest[0][0]));
-    double dfactor_temp_perp = 0;
-    double dfactor_temp_para = 0;
     double ang_factor; //reduction in power from small solid angle of zone already accounted for by dx/dxsum in dfactor__, this term remedies
 
     int buffer_subset[N_BLOCKS]; //different blocks have different buffer_sizes depending on their position in jet cross section
@@ -230,19 +188,19 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
     //****************Initialise Polarisation variables *****************************************************************************//
     //first set frequency bins for polarised powers to drop into:
-    double f_pol[ARRAY_SIZE];
-    double f_pol_IC[ARRAY_SIZE]; //fixed bins
+    // double f_pol[ARRAY_SIZE];
+    // double f_pol_IC[ARRAY_SIZE]; //fixed bins
     double f_pol_ICbounds[ARRAY_SIZE+1]; //for calculating IC bins properly
     double P_perp[ARRAY_SIZE];
     memset(P_perp, 0.0, ARRAY_SIZE*sizeof(P_perp[0]));
     double P_para[ARRAY_SIZE];
     memset(P_para, 0.0, ARRAY_SIZE*sizeof(P_para[0])); //initialise to make sure junk values arent inside upon first +=
-    double P_perpIC[ARRAY_SIZE];
-    memset(P_perpIC, 0.0, ARRAY_SIZE*sizeof(P_perpIC[0]));
-    double P_paraIC[ARRAY_SIZE];
-    memset(P_paraIC, 0.0, ARRAY_SIZE*sizeof(P_paraIC[0]));
-    double P_X[ARRAY_SIZE];
-    memset(P_X, 0.0, ARRAY_SIZE*sizeof(P_X[0]));
+    // double P_perpIC[ARRAY_SIZE];
+    // memset(P_perpIC, 0.0, ARRAY_SIZE*sizeof(P_perpIC[0]));
+    // double P_paraIC[ARRAY_SIZE];
+    // memset(P_paraIC, 0.0, ARRAY_SIZE*sizeof(P_paraIC[0]));
+    // double P_X[ARRAY_SIZE];
+    // memset(P_X, 0.0, ARRAY_SIZE*sizeof(P_X[0]));
     double dfreqs_pol[ARRAY_SIZE]; //again fixed size
     double dfreqs_polIC[ARRAY_SIZE];
     double F_min;
@@ -298,8 +256,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         dfreqs_polIC[i] = (f_em_max_IC[i]-f_em_min_IC[i]);
         f_pol_IC[i] = pow(10,log10(gamma_e[i] * gamma_e[i] * f_pol[i]));
 
-        fprintf(freqrange,  "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", f_em_min[i], f_em_max[i], f_c[i], dfreqs[i],
-                f_em_min_IC[i], f_em_max_IC[i], f_pol_IC[i], dfreqs_polIC[i]);  //saves the frequency bins!
+        // fprintf(freqrange,  "%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e\t%.6e \n", f_em_min[i], f_em_max[i], f_c[i], dfreqs[i],
+        //         f_em_min_IC[i], f_em_max_IC[i], f_pol_IC[i], dfreqs_polIC[i]);  //saves the frequency bins!
     }
 
     A_orig = A_elecs[0]; //all elements the same to begin with
@@ -313,7 +271,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     for (i=0; i<ARRAY_SIZE; i++)
     {
 
-        A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*Qe, E_max*Qe, A_eq) * (UB_jetbase/Ue_jetbase) / A_eq; //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
+        A_elecs[i] = A_PL(alpha, W_j, gamma_bulk, E_min*Qe, E_max*Qe, A_eq)* (UB_jetbase/Ue_jetbase) / A_eq; //1 assumes equipartition. DIVIDED W_j by gamma^2 for jet frame
         dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
         Ne_e[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe)*dEe[i]*Qe;
         Ne_orig[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe)*dEe[i]*Qe; //allows comparison of final to initial electron population
@@ -326,7 +284,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     {
         Ue_jetbase += Ne_e[i]*E_elecs[i]*Qe;
     }
-    printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
+    PRINT("Equipartition fraction U_B / U_e = %.5e \n", UB_jetbase / Ue_jetbase);
+
 
     // set bins with fewer than ten electrons to zero: prevents resolution from being limited
     cleanpop(Ne_e, ARRAY_SIZE, 10.0);
@@ -346,18 +305,18 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     //becoming more transverse
     double Proj_theta_B[N_BLOCKS];
     //defining how far along the helix we are
-    int helix_counter;
-    sscanf(argv[2], "%d", &helix_counter); //taking input from command line how many 'days' we have been observing
+    int helix_counter = 0;
+    // sscanf(argv[2], "%d", &helix_counter); //taking input from command line how many 'days' we have been observing
     //parameters for helix
     double t_helix = helix_counter*M_PI/32; //helix parameter x=rcos(t+phi) y=rsin(t+phi) z =ct (r will be radius of jet)
     //Pi constant decided how quickly we sample along the helix -> timescale
     double phi_helix = 0;//M_PI/3; //phase shift, just an initial condition
     double c_helix = R0; //speed (ie number of coils per unit distance) -- high c => spaced out coils, low c => densely packed coils
 
-    int EVPA_rotation;
-    sscanf(argv[1], "%d", &EVPA_rotation); //taking input from command line if true begin EVPA rotation, if false do not
-    int DopDep;
-    sscanf(argv[3], "%d", &DopDep); //taking input from command line if true activate DopDep, if false do not
+    int EVPA_rotation = 0;
+    // sscanf(argv[1], "%d", &EVPA_rotation); //taking input from command line if true begin EVPA rotation, if false do not
+    int DopDep = 1;
+    // sscanf(argv[3], "%d", &DopDep); //taking input from command line if true activate DopDep, if false do not
 
     //now the Bfield vectors are rotated about both the y and x axis each block with a different theta_obs
     //these give the angles each block is at with respect to the direction of the jet:
@@ -440,36 +399,34 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
     }
 
-    int breakstep;
-    sscanf(argv[8], "%d", &breakstep);
+
+    int breakstep = 100;
     //Full and zonal Stokes vector bins for Synchrotron and IC respectively
-    double S_Stokes[N_BLOCKS][3][ARRAY_SIZE];
+    double S_Stokes[N_BLOCKS][ARRAY_SIZE][3];
     memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double S_StokesTotal[ARRAY_SIZE][3];
-    memset(S_StokesTotal, 0, sizeof(S_StokesTotal[0][0])* ARRAY_SIZE * 3);
-    double S_StokesTotal_Sec[breakstep][ARRAY_SIZE][3];
-    memset(S_StokesTotal_Sec, 0, sizeof(S_StokesTotal_Sec[0][0][0]) * breakstep * ARRAY_SIZE * 3);
-    double S_Pi[ARRAY_SIZE];
-    double S_PA[ARRAY_SIZE];
-    double S_P[ARRAY_SIZE];
-    double ICS_Pi[ARRAY_SIZE];
-    double ICS_PA[ARRAY_SIZE];
-    double ICS_P[ARRAY_SIZE]; //for the total S + IC, have to think about adding powers with different frequency bin sizes
-    double ICS_StokesTotal[ARRAY_SIZE][3];
-    memset(ICS_StokesTotal, 0, sizeof(ICS_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    // double S_StokesTotal[ARRAY_SIZE][3];
+    // memset(S_StokesTotal, 0, sizeof(S_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    // double S_Pi[ARRAY_SIZE];
+    // double S_PA[ARRAY_SIZE];
+    // double S_P[ARRAY_SIZE];
+    // double ICS_Pi[ARRAY_SIZE];
+    // double ICS_PA[ARRAY_SIZE];
+    // double ICS_P[ARRAY_SIZE]; //for the total S + IC, have to think about adding powers with different frequency bin sizes
+    // double ICS_StokesTotal[ARRAY_SIZE][3];
+    // memset(ICS_StokesTotal, 0, sizeof(ICS_StokesTotal[0][0])* ARRAY_SIZE * 3);
 
-    //double IC_Stokes[N_BLOCKS][3][ARRAY_SIZE];
-    //memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double IC_StokesTotal[ARRAY_SIZE][3];
-    memset(IC_StokesTotal, 0, sizeof(IC_StokesTotal[0][0])* ARRAY_SIZE * 3);
+    double IC_Stokes[N_BLOCKS][ARRAY_SIZE][3];
+    memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
+    // double IC_StokesTotal[ARRAY_SIZE][3];
+    // memset(IC_StokesTotal, 0, sizeof(IC_StokesTotal[0][0])* ARRAY_SIZE * 3);
 
-    double IC_StokesZTotal[N_BLOCKS][ARRAY_SIZE][3];
-    memset(IC_StokesZTotal, 0, sizeof(IC_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double S_StokesZTotal[N_BLOCKS][ARRAY_SIZE][3];
-    memset(S_StokesZTotal, 0, sizeof(S_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-    double IC_Pi[ARRAY_SIZE];
-    double IC_PA[ARRAY_SIZE];
-    double IC_P[ARRAY_SIZE];
+    // double IC_StokesZTotal[N_BLOCKS][ARRAY_SIZE][3];
+    // memset(IC_StokesZTotal, 0, sizeof(IC_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
+    // double S_StokesZTotal[N_BLOCKS][ARRAY_SIZE][3];
+    // memset(S_StokesZTotal, 0, sizeof(S_StokesZTotal[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
+    // double IC_Pi[ARRAY_SIZE];
+    // double IC_PA[ARRAY_SIZE];
+    // double IC_P[ARRAY_SIZE];
     double zone_doppler;
     double q_theta;
     double zeta;
@@ -486,33 +443,19 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     int binshiftS;
     double dfactor;
 
-    //double X = 0.0;
+    // double X = 0.0;
     double KN = 1.0; //klein nishina factor
-    double v_k[3] = {0}; //incoming photon vector
-    double e_k[3] = {0}; //incoming polarization vector perpendicular to B
-    double _e[2] = {0}; //outgoing polarization vector
-    double e_kpara[3] = {0}; //incoming polarization vector parallel to B
-    double zone_d; //distance from other zones
-    //now including full RPAR treatment for IC
-    double Btheta = 90*M_PI/180;
-    double Pperpperp = 0.0;
-    double Pperppara = 0.0;
-    double Pparaperp = 0.0;
-    double Pparapara = 0.0;
     double effective_alpha[ARRAY_SIZE];
-    double opacity_factor;
-    double dx_op_array[breakstep];
-    double k_array[breakstep][ARRAY_SIZE];
-    double tau[breakstep][ARRAY_SIZE];
-    memset(tau, 0, sizeof(tau[0][0])* breakstep * ARRAY_SIZE);
-
+    
+    // int breakstep;
+    // sscanf(argv[8], "%d", &breakstep);
 
     //choosing random vectors (B_0,B_1,B_2) in unit sphere for random blocks initial B directions:
-    int thread_id;
-    int task_id;
-    sscanf(argv[2], "%d", &thread_id);
-    sscanf(argv[7], "%d", &task_id);
-    MTRand seedr = seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
+    // int thread_id = 4;
+    // int task_id = 8;
+    // sscanf(argv[2], "%d", &thread_id);
+    // sscanf(argv[7], "%d", &task_id);
+    MTRand seedr = seedRand(argblocks[2]); //seedRand((unsigned)time(NULL)+(unsigned)(1631*task_id + 335*thread_id)); //random seed supplemented by task and thread id
     //MTRand seedr = seedRand(11); //fix random seed
     int nLT_sections = 30;
 
@@ -531,7 +474,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     int marker_list[N_BLOCKS];
     for (n=0; n<N_BLOCKS; n++) {
         marker_list[n] = nLT_sections / 2;
-        //printf("marker_list init = %d", marker_list[n]);
+        // printf("marker_list init = %d", marker_list[n]);
     }
 
     double B_0[nLT_sections][N_BLOCKS];
@@ -566,7 +509,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                      BX[l][i] = (B_2[l][i]*sin(deg2rad(theta_obs)) + B_0[l][i]*cos(deg2rad(theta_obs)));
                      BY[l][i] = B_1[l][i];
                      BZ[l][i] = (B_2[l][i]*cos(deg2rad(theta_obs))-B_0[l][i]*sin(deg2rad(theta_obs)));
-                     //printf("BXBYBZ %d\t%d\t%.5e\t%.5e\t%.5e\n",l,i,BX[l][i],BY[l][i],BZ[l][i]);
+                    //  printf("BXBYBZ %d\t%d\t%.5e\t%.5e\t%.5e\n",l,i,BX[l][i],BY[l][i],BZ[l][i]);
              }
         }
     } else {
@@ -645,216 +588,15 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         }
     }
 
-    //Linear Algebra Speedup using BLAS and GSL libraries: write SSC integral as y = Ax, code below finds A
-
-    for (l=0; l<ARRAY_SIZE; l++){
-        //P_para[l] = 0.2*P_perp[l];
-        //make alpha dependent on frequency here
-        if (l == 0){
-           effective_alpha[l] = -(log10(dN_dE[l+1]) - log10(dN_dE[l]))/(log10(E_elecs[l+1]*Qe) - log10(E_elecs[l]*Qe));
-        } else if (l > ARRAY_SIZE - 2) {
-            effective_alpha[l] = -(log10(dN_dE[l]) - log10(dN_dE[l-1]))/(log10(E_elecs[l]*Qe) - log10(E_elecs[l-1]*Qe));
-        } else {
-            effective_alpha[l] = -(log10(dN_dE[l+1]) - log10(dN_dE[l-1]))/(log10(E_elecs[l+1]*Qe) - log10(E_elecs[l-1]*Qe));
-        }
-        if (isnan(effective_alpha[l]) || isinf(effective_alpha[l])) {
-            effective_alpha[l] = 8.41283e+01;
-        }
-    }
-
-    gsl_vector * X[N_BLOCKS];
-    gsl_matrix * A[N_BLOCKS][3];
-    gsl_vector * IC_Stokes[N_BLOCKS][3];
-
-    for (h=0; h<N_BLOCKS; h++){
-         X[h] = gsl_vector_alloc(ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);//perp and para concatenated
-
-         A[h][0] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2); //one for each stokes parameter
-         A[h][1] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
-         A[h][2] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
-
-         IC_Stokes[h][0] = gsl_vector_alloc(ARRAY_SIZE);
-         IC_Stokes[h][1] = gsl_vector_alloc(ARRAY_SIZE);
-         IC_Stokes[h][2] = gsl_vector_alloc(ARRAY_SIZE);
-    }
-
-
-    if (SSC){
-//        for (h=0; h<N_BLOCKS; h++){
-//             X[h] = gsl_vector_calloc(ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);//perp and para concatenated
-//
-//             A[h][0] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2); //one for each stokes parameter
-//             A[h][1] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
-//             A[h][2] = gsl_matrix_calloc(ARRAY_SIZE, ARRAY_SIZE*ARRAY_SIZE*N_BLOCKS*2);
-//
-//             IC_Stokes[h][0] = gsl_vector_alloc(ARRAY_SIZE);
-//             IC_Stokes[h][1] = gsl_vector_alloc(ARRAY_SIZE);
-//             IC_Stokes[h][2] = gsl_vector_alloc(ARRAY_SIZE);
+//        for (i=0; i<(N_BLOCKS); i++) { //save B-fields for visualization
+//            fprintf(Proj_Bfile,"\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",theta_r[i],theta_phi[i],
+//                    theta_tot[i],atan2(B_1[i],B_0[i]),atan2(By[i],Bx[i]),atan2(By_helical[i],Bx_helical[i]),
+//                    atan2(BY[i],BX[i]),atan2(B_effectives[i][i][1],B_effectives[i][i][0]));
 //        }
-
-        for (g=0; g<N_BLOCKS; g++){ //B-fields
-            for (h=0; h<N_BLOCKS; h++){ //block locations
-                Btheta = acos(B_effectives[marker_list[h]][h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
-                zeta = atan(B_effectives[marker_list[h]][h][g][1]/B_effectives[marker_list[h]][h][g][0]); //to rotate each Stokes to lab frame
-
-                if (h==g){
-                    phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
-                    //rotate to B_effective
-                    ang_factor = 1; //adjust so total IC power always the same
-
-                } else if (h!=g) {
-                    //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
-                    //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
-                    cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
-                    cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
-                    cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
-                    cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
-                    cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
-                    cosk_single[5] = unitalign5[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[5] = atan2(unitalign5[h][g][0]*sin(-zeta) + unitalign5[h][g][1]*cos(-zeta), unitalign5[h][g][0]*cos(-zeta) - unitalign5[h][g][1]*sin(-zeta));
-                    cosk_single[6] = unitalign6[h][g][2]; //z component isnt affected by -zeta rotation
-                    phik_single[6] = atan2(unitalign6[h][g][0]*sin(-zeta) + unitalign6[h][g][1]*cos(-zeta), unitalign6[h][g][0]*cos(-zeta) - unitalign6[h][g][1]*sin(-zeta));
-
-        	    for (n=0; n<7; n++){
-                        cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
-                        phik_list[n] = findClosest(phik, phik_single[n], 10);
-                        //printf("coskphik %d\t%d\n",cosk_list[n],phik_list[n]);
-                    }
-                    cosk_start = 0, cosk_end = 7;
-                    phik_start = 0, phik_end = 1;
-                    ang_factor = 14.3; //ie 20*5 = 100 = size(phik) * size(cosk)
-
-                } else {
-                  continue;
-                }
-
-                for (n=0; n<ARRAY_SIZE; n++){  //f_polIC (compton energy)
-                    for (l=0; l<ARRAY_SIZE; l++){ //f_pol (sync energy)
-                        for (p=phik_start; p<phik_end; p++){ //phi
-                            for (m=cosk_start; m<cosk_end; m++){ //cosk
-                                nn = m;
-                                if (h != g) {
-                                   p = phik_list[nn];
-                                   m = cosk_list[nn];
-                                }
-                                F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
-                                v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
-                                e_k[0] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta);
-                                e_k[1] = sin(Btheta)*cosk[m] - cos(Btheta)*sqrt(1-cosk[m]*cosk[m])*cos(phik[p]); //incoming photon polarization vector (perp)
-                                e_k[2] = -sin(Btheta)*sqrt(1-cosk[m]*cosk[m])*sin(phik[p]);
-                                //this is just cross product of e_k and v_k above
-                                e_kpara[0] = pow(cosk[m],2)*sin(Btheta) - cos(Btheta)*cos(phik[p])*cosk[m]*sqrt(1-cosk[m]*cosk[m]) + (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*sin(Btheta),
-                                e_kpara[1] = -sin(Btheta)*(1-cosk[m]*cosk[m])*sin(2*phik[p])/2 - cosk[m]*sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta), //incoming photon polarization vector (para)
-                                e_kpara[2] = (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*cos(Btheta) - sqrt(1-cosk[m]*cosk[m])*cos(phik[p])*sin(Btheta)*cosk[m] + (1-cosk[m]*cosk[m])*pow(cos(phik[p]),2)*cos(Btheta);
-                                //e_k above is not normalised
-                                q_theta = pow(1-pow(cos(Btheta)*cosk[m]+sin(Btheta)*cos(phik[p])*sqrt(1-cosk[m]*cosk[m]),2),(effective_alpha[l]+1)/4);
-
-                                if (F_min*(Me_EV) > E_elecs[ARRAY_SIZE-1]) {
-                                    P_perpIC[n] += 0.0;
-                                    P_paraIC[n] += 0.0;
-                                }
-
-                                else if (F_min*(Me_EV) > E_elecs[0]) {
-                                    for (o=0; o<ARRAY_SIZE; o++){ //find Fmin location in E_elecs
-                                        if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
-                                           break;
-                                        }
-                                    }
-
-                                    for (i=o; i<ARRAY_SIZE; i++){ //E_e
-                                        //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
-
-                                        Pperpperp = 3.95417e-103 * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
-                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) );
-                                        //printf("Pperperp %.5e\n", Pperpperp);
-
-                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ); 
-
-
-                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ); 
-
-
-                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ); 
-
-                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2)+ (Pparapara/(N_BLOCKS)) + (Pperppara/(N_BLOCKS)));
-                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS)) + (Pperpperp/(N_BLOCKS)));
-                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-
-
-                                    }
-                                }
-
-                                else {
-                                    for (i=0; i<ARRAY_SIZE; i++){ //E_e
-                                        Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
-                                        *KN; 
-
-                                        Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
-                                        *KN; 
-
-
-                                        Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
-                                        *KN;
-                                        //printf("Pparaperp %.5e\n", Pparaperp);
-
-                                        Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (1 /(f_pol[l]*H)) * dcosk * dphik * ang_factor
-                                        * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i])
-                                        + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,1,dEe[i]) )
-                                        *KN; 
-
-                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS)) + (Pperppara/(N_BLOCKS)));
-                                        gsl_matrix_set(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][0], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS)) + (Pperpperp/(N_BLOCKS)));
-                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-                                        gsl_matrix_set(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][1], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2) + (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-                                        gsl_matrix_set(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, gsl_matrix_get(A[h][2], n, (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1) + (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) + (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))) );
-
-                                    }
-                                }
-
-                                if (h != g) {
-                                   m = nn;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-
-
-
-
-
-
 
 
     // Actual Jet emission calculation loop
-    printf("Beginning jet analysis... \n");
+    // printf("Beginning jet analysis... \n");
     while (x<L_jet)
     {
         time_begin = clock();
@@ -865,16 +607,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         //now can also include doppler depolarisation, changing the B field to EFFECTIVE B fields which give correct perp E component as if it had
         //been doppler depolarisedx
         //Each block has its own theta_obs as we are looking inside the conical jet
-
-        UB_jetbase = R*R*C*B*B/(2*1E-7);
-        Ue_jetbase = 0.0;
-        for (i=0; i<ARRAY_SIZE; i++)
-        {
-            Ue_jetbase += Ne_e[i]*E_elecs[i]*Qe;
-        }
-        printf("Ue = %.5e\n",Ue_jetbase);
-        printf("UB = %.5e\n",UB_jetbase);
-        printf("Equipartition fraction U_B / U_e = %.3e\n", UB_jetbase/Ue_jetbase);
 
         //Jet section mixing here: if Rtan(theta_obs) > R_0/sqrt(N) then we start assigning new B-fields to edge zones and so on, equivalent to seeing emission from zones in section
         //behind and in front.
@@ -899,7 +631,7 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 }
                 //printf("i, zone_marker = %d \t  %d \n", i, marker_list[i]);
             }
-           printf("\n WARNING: Section Mixing has begun! \n");
+        //    printf("\n WARNING: Section Mixing has begun! \n");
         }
         /***************************************************************************************************/
 
@@ -907,13 +639,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         for (i=0; i<ARRAY_SIZE; i++)
         {
             P_single[i] = larmor(B, beta_e[i], gamma_e[i]); //gives the radiated power by one electron in each bin
-            //j[i] = j_per_hz(P_single[i], R, dN_dE[i], eps, f_c[i]);//*(R_next/R)*(R_next/R);//gives emissivity per unit frequency
+            j[i] = j_per_hz(P_single[i], R, dN_dE[i], eps, f_c[i]);//*(R_next/R)*(R_next/R);//gives emissivity per unit frequency
 
-            //k[i] = k_new(j[i], eps, f_c[i]); //gives the corresponding opacity
+            k[i] = k_new(j[i], eps, f_c[i]); //gives the corresponding opacity
             Ps_per_m_elec[i] = P_single[i]*dN_dE[i]*E_elecs[i]*Qe*dfreqs_pol[i] / (2*f_c[i]*C);
-            //Ps_per_m_test[i] = power_emitted(j[i], k[i], R) * M_PI * R; //power per unit length assuming R roughly constant
             //determine whether jet is optically thin or thick -> this part is incomplete
-//            R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
+            R_eff[i] = power_emitted(j[i], k[i], R)/j[i]; //depth down to which can be seen in one second
 
             //Polarisation -> Power emitted parallel and perpendicular to projected B field at each frequency interval per m (/ l_c) 
             for (l=0; l<ARRAY_SIZE; l++) {
@@ -930,16 +661,13 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
                 }
             }
             Sync_losses[i] = Ps_per_m_elec[i];
+            //printf("Ps_per_me_test %.5e\t%.5e\n", Ps_per_m_test[i],Ps_per_m_elec[i]);
         }
 
-        for (i=0; i<ARRAY_SIZE; i++){
-            j[i] = (P_perp[i] + P_para[i]) / (M_PI * R * R);
-            k[i] = (j[i] * C * C) / (2 * pow(eps,0.5) * pow(f_pol[i],2.5));
-        }
 
         // Find marker for LT section mixing
         marker = (int)round(R*tan(deg2rad(theta_obs)) /  (2 * R0 / (sqrt(N_BLOCKS)) ) );
-	    //printf("MARKER: %d \n", marker);
+	    // printf("MARKER: %d \n", marker);
 
         //some code to estimate what dx early for energy density calcultion, based off sync losses only, ok if IC losses not too big, early jet
         dx_set = findminelementNO0(Ne_e, ARRAY_SIZE);//gets the lowest non_zero element. Higher energy electrons radiate more rapidly
@@ -952,10 +680,6 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         } else {
           dx = dx_P;
         }
-//
-//        for (i=0; i<ARRAY_SIZE; i++){
-//            printf("Opacities %.5e\t%.5e\n", k[i], (1 - exp(-k[i]*dx)) / k[i]);
-//        }
 
 	/*************************************************************************************************************/
         // Buffer of previous synchrotron emission setup
@@ -1044,8 +768,8 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             //printf("alphaef \t%.5e\n",effective_alpha[l]);
             for (g=0; g<N_BLOCKS; g++) { //Sync Stokes Parameters
                 q_theta = pow(sin(acos(B_effectives[marker_list[g]][g][g][2])),(effective_alpha[l]+1)/2); //factor to account for weaker emission when B_field pointed closer to line of sight
-                S_Stokes[g][0][l] += q_theta*P_perp[l]/N_BLOCKS, S_Stokes[g][1][l] += (q_theta*P_perp[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1])), S_Stokes[g][2][l] += (q_theta*P_perp[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1]));
-                S_Stokes[g][0][l] += q_theta*P_para[l]/N_BLOCKS, S_Stokes[g][1][l] += (q_theta*P_para[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0])), S_Stokes[g][2][l] += (q_theta*P_para[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0]));
+                S_Stokes[g][l][0] += q_theta*P_perp[l]/N_BLOCKS, S_Stokes[g][l][1] += (q_theta*P_perp[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1])), S_Stokes[g][l][2] += (q_theta*P_perp[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][0],-B_effectives[marker_list[g]][g][g][1]));
+                S_Stokes[g][l][0] += q_theta*P_para[l]/N_BLOCKS, S_Stokes[g][l][1] += (q_theta*P_para[l]/N_BLOCKS)*cos(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0])), S_Stokes[g][l][2] += (q_theta*P_para[l]/N_BLOCKS)*sin(2*atan2(B_effectives[marker_list[g]][g][g][1],B_effectives[marker_list[g]][g][g][0]));
                 //printf("SSStokes123 %.5e\t%.5e\t%.5e\n", S_Stokes[g][l][0],S_Stokes[g][l][1],S_Stokes[g][l][2]);
             }
 
@@ -1084,39 +808,203 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
 
         //fprintf(energydensity, "%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", urad_array_perp[0][5],urad_array_perp[0][20],urad_array_perp[1][40],urad_array_perp[1][5],urad_array_perp[1][20],urad_array_perp[1][40],dfactor_perp[0][0][5]/urad_array_perp[0][5], dfactor_perp[1][1][5]/urad_array_perp[1][5], urad_array_perpTEST[5], urad_array_perpTEST[20], urad_array_perpTEST[40]);
 
-        for (l=0; l<ARRAY_SIZE; l++) { //reset these values to be calculated this step
-            P_perpIC[l] = 0.0;
-            P_paraIC[l] = 0.0;
-        }
+        // for (l=0; l<ARRAY_SIZE; l++) { //reset these values to be calculated this step
+        //     P_perpIC[l] = 0.0;
+        //     P_paraIC[l] = 0.0;
+        // }
 
 
         //********************************************** ALP SSC losses *******************************************//
-        // given energy density prescription do we need 1/nblocks in Pperpperp etc? Yes, still do because Pperp_array uses full electron pop power
-        if (SSC) {
-            for (h=0; h<N_BLOCKS; h++){ //B-fields
-                for (g=0; g<N_BLOCKS; g++){ //B-fields
-                    for (l=0; l<ARRAY_SIZE; l++){ //block locations/
-                        for (i=0; i<ARRAY_SIZE; i++){ //block locations
-                            gsl_vector_set(X[h], (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2 + 1, dN_dE[i] * dfactor_perp[h][g][l]);
-                            gsl_vector_set(X[h], (i + ARRAY_SIZE*l + ARRAY_SIZE*ARRAY_SIZE*g)*2, dN_dE[i] * dfactor_para[h][g][l]);
+        //XXX: given energy density prescription do we need 1/nblocks in Pperpperp etc? Yes, still do because Pperp_array uses full electron pop power
+
+        if (SSC){
+
+            // #pragma omp parallel for private(h,n,l,p,m,i,o) reduction(+:IC_Stokes[:N_BLOCKS][:ARRAY_SIZE][:3])
+            for (g=0; g<N_BLOCKS; g++){ //B-fields
+                // printf("NUM_THREADS: %d\n", omp_get_num_threads());
+                double Btheta;
+                double zeta;
+                double cosk_single[7];
+                double phik_single[7];
+                int phik_start, phik_end, cosk_start, cosk_end;
+                int cosk_list[7];
+                int phik_list[7];
+
+                for (h=0; h<N_BLOCKS; h++){ //block locations
+                    Btheta = acos(B_effectives[marker_list[h]][h][g][2]); //compton polarization fraction very dependent on this for a single zone, 90deg gives highest
+                    zeta = atan(B_effectives[marker_list[h]][h][g][1]/B_effectives[marker_list[h]][h][g][0]); //to rotate each Stokes to lab frame
+                    // printf("Btheta, zeta: %f\t %f\n", Btheta, zeta);
+
+                    if (h==g){
+                        phik_start = 0, phik_end = 10, cosk_start = 0, cosk_end = 10;
+                        //rotate to B_effective
+                        ang_factor = 1; //adjust so total IC power always the same
+
+                    } else if (h!=g && dfactor_perp[h][g][0] != 0) {
+                        //first rotate align vector in exactly the same rotation as B -> Beffective, taken care of by unitalign
+                        //then rotate unitalign vector by -zeta about z axis to get B in x-z plane
+                        cosk_single[0] = unitalign0[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[0] = atan2(unitalign0[h][g][0]*sin(-zeta) + unitalign0[h][g][1]*cos(-zeta), unitalign0[h][g][0]*cos(-zeta) - unitalign0[h][g][1]*sin(-zeta)); //this is between -pi and pi, but phik between 0 and 2pi
+                        cosk_single[1] = unitalign1[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[1] = atan2(unitalign1[h][g][0]*sin(-zeta) + unitalign1[h][g][1]*cos(-zeta), unitalign1[h][g][0]*cos(-zeta) - unitalign1[h][g][1]*sin(-zeta));
+                        cosk_single[2] = unitalign2[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[2] = atan2(unitalign2[h][g][0]*sin(-zeta) + unitalign2[h][g][1]*cos(-zeta), unitalign2[h][g][0]*cos(-zeta) - unitalign2[h][g][1]*sin(-zeta));
+                        cosk_single[3] = unitalign3[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[3] = atan2(unitalign3[h][g][0]*sin(-zeta) + unitalign3[h][g][1]*cos(-zeta), unitalign3[h][g][0]*cos(-zeta) - unitalign3[h][g][1]*sin(-zeta));
+                        cosk_single[4] = unitalign4[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[4] = atan2(unitalign4[h][g][0]*sin(-zeta) + unitalign4[h][g][1]*cos(-zeta), unitalign4[h][g][0]*cos(-zeta) - unitalign4[h][g][1]*sin(-zeta));
+                        cosk_single[5] = unitalign5[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[5] = atan2(unitalign5[h][g][0]*sin(-zeta) + unitalign5[h][g][1]*cos(-zeta), unitalign5[h][g][0]*cos(-zeta) - unitalign5[h][g][1]*sin(-zeta));
+                        cosk_single[6] = unitalign6[h][g][2]; //z component isnt affected by -zeta rotation
+                        phik_single[6] = atan2(unitalign6[h][g][0]*sin(-zeta) + unitalign6[h][g][1]*cos(-zeta), unitalign6[h][g][0]*cos(-zeta) - unitalign6[h][g][1]*sin(-zeta));
+
+                        for (n=0; n<7; n++){
+                            cosk_list[n] = findClosest(cosk, cosk_single[n], 10);
+                            phik_list[n] = findClosest(phik, phik_single[n], 10);
+                        }
+                        cosk_start = 0, cosk_end = 7;
+                        phik_start = 0, phik_end = 1;
+                        ang_factor = 14.3; //ie 20*5 = 100 = size(phik) * size(cosk)
+
+                    } else {
+                      continue;
+                    }
+
+                    #pragma omp parallel for collapse(4) private(i,o) reduction(+:IC_Stokes[h][:ARRAY_SIZE][:3])
+                    for (n=0; n<ARRAY_SIZE; n++){  //f_polIC (compton energy)
+                        for (l=0; l<ARRAY_SIZE; l++){ //f_pol (sync energy)
+                            for (p=phik_start; p<phik_end; p++){ //phi
+                                for (m=cosk_start; m<cosk_end; m++){ //cosk
+                                    int nn = m;
+                                    if (h != g) {
+                                       p = phik_list[nn];
+                                       m = cosk_list[nn];
+                                    }
+                                    double F_min;
+                                    double v_k[3];     //incoming photon vector
+                                    double e_k[3];     //incoming polarization vector perpendicular to B
+                                    double _e[2];      //outgoing polarization vector
+                                    double e_kpara[3]; //incoming polarization vector parallel to B
+                                    double Pperpperp;
+                                    double Pperppara;
+                                    double Pparaperp;
+                                    double Pparapara;
+                                    double q_theta;
+
+                                    F_min = sqrt(f_pol_IC[n]/(2*f_pol[l] * (1-cosk[m])));
+                                    v_k[0] = sqrt(1-cosk[m]*cosk[m])*cos(phik[p]), v_k[1] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p]), v_k[2] = cosk[m]; //incoming photon direction vector
+                                    e_k[0] = sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta);
+                                    e_k[1] = sin(Btheta)*cosk[m] - cos(Btheta)*sqrt(1-cosk[m]*cosk[m])*cos(phik[p]); //incoming photon polarization vector (perp)
+                                    e_k[2] = -sin(Btheta)*sqrt(1-cosk[m]*cosk[m])*sin(phik[p]);
+                                    //this is just cross product of e_k and v_k above
+                                    e_kpara[0] = pow(cosk[m],2)*sin(Btheta) - cos(Btheta)*cos(phik[p])*cosk[m]*sqrt(1-cosk[m]*cosk[m]) + (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*sin(Btheta),
+                                    e_kpara[1] = -sin(Btheta)*(1-cosk[m]*cosk[m])*sin(2*phik[p])/2 - cosk[m]*sqrt(1-cosk[m]*cosk[m])*sin(phik[p])*cos(Btheta), //incoming photon polarization vector (para)
+                                    e_kpara[2] = (1-cosk[m]*cosk[m])*pow(sin(phik[p]),2)*cos(Btheta) - sqrt(1-cosk[m]*cosk[m])*cos(phik[p])*sin(Btheta)*cosk[m] + (1-cosk[m]*cosk[m])*pow(cos(phik[p]),2)*cos(Btheta);
+                                    //e_k above is not normalised
+                                    q_theta = pow(1-pow(cos(Btheta)*cosk[m]+sin(Btheta)*cos(phik[p])*sqrt(1-cosk[m]*cosk[m]),2),(effective_alpha[l]+1)/4);
+
+                                    if (F_min*(Me_EV) > E_elecs[ARRAY_SIZE-1]) {
+                                        // P_perpIC[n] += 0.0;
+                                        // P_paraIC[n] += 0.0;
+                                    }
+
+                                    else if (F_min*(Me_EV) > E_elecs[0]) {
+                                        for (o=0; o<ARRAY_SIZE; o++){ //find Fmin location in E_elecs
+                                            if (F_min*(Me_EV) > E_elec_min[o] && F_min*(Me_EV) < E_elec_max[o]){
+                                               break;
+                                            }
+                                        }
+
+                                        for (i=o; i<ARRAY_SIZE; i++){ //E_e
+                                            //initial constant factor to make sure this matches with isotropic electron losses, original constant from paper is 1.2859E-91
+
+                                            Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor //this is Power(freq), multiply by freq later to get nuF(nu)
+                                            * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pperpperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                            Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pperppara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+                                            
+
+                                            Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pparaperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                            
+
+                                            Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pparapara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                            // P_perpIC[n] += Pperpperp + Pperppara;
+                                            // P_paraIC[n] += Pparaperp + Pparapara;
+                                        }
+                                    }
+
+                                    else {
+                                        for (i=0; i<ARRAY_SIZE; i++){ //E_e
+                                            Pperpperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */  (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_k,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pperpperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperpperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperpperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                            Pperppara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_kpara,v_k,1) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pperppara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pperppara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pperppara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+                                            
+
+                                            Pparaperp = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_perp[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_k,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pparaperp/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparaperp/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparaperp/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                            
+
+                                            Pparapara = 3.95417e-103 /*8.26784E-118*/ * q_theta * /*dfreqs_polIC[n] */ f_pol_IC[n]/f_pol[l] * F_min * /*dfreqs_pol[l]* */ (dfactor_para[h][g][l] /(f_pol[l]*H)) * dcosk * dphik * ang_factor
+                                            * ( Z_e(_e,e_kpara,v_k,0) * ( Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i])
+                                            + Sigma_1(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) ) + Sigma_2(E_elecs[i],Me_EV*Qe*F_min,dN_dE[i],dEe[i]) )
+                                            *KN; 
+                                            
+                                            IC_Stokes[h][n][0] += (Pparapara/(N_BLOCKS)), IC_Stokes[h][n][1] += (Pparapara/(N_BLOCKS))*cos(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta))), IC_Stokes[h][n][2] += (Pparapara/(N_BLOCKS))*sin(2*atan2(_e[1]*cos(zeta)+_e[0]*sin(zeta),_e[0]*cos(zeta)-_e[1]*sin(zeta)));
+
+                                            // P_perpIC[n] += Pperpperp + Pperppara;
+                                            // P_paraIC[n] += Pparaperp + Pparapara;
+
+                                        }
+                                    }
+
+                                    if (h != g) {
+                                       m = nn;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            for (h=0; h<N_BLOCKS; h++){
-                gsl_blas_dgemv(CblasNoTrans, 1, A[h][0], X[h], 0, IC_Stokes[h][0]);
-                gsl_blas_dgemv(CblasNoTrans, 1, A[h][1], X[h], 0, IC_Stokes[h][1]);
-                gsl_blas_dgemv(CblasNoTrans, 1, A[h][2], X[h], 0, IC_Stokes[h][2]);
-            }
         }
-
-
-
-
-
-
-
+        // printf("dfactor: %f\t%f\t%f\n", log10(dfactor_perp[0][0][10]), log10(dfactor_perp[0][0][25]), log10(dfactor_perp[0][0][40]));
+        // printf("dNdE: %f\t%f\t%f\n", log10(dN_dE[10]), log10(dN_dE[25]), log10(dN_dE[40]));
 
 
         for (i=0; i<ARRAY_SIZE; i++){
@@ -1154,34 +1042,32 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             binshiftIC = (int)round(log10(zone_doppler/doppler_factor)/logdif); //the number of bins one moves across (relative to shift of bins which already takes place)
             logdif = log10(f_pol[1])-log10(f_pol[0]);
             binshiftS = (int)round(log10(zone_doppler/doppler_factor)/logdif);
-            //printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
-            //printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
+            // printf("binshifts %d\t%d\n", binshiftIC,binshiftS);
+            // printf("dopplers %.5e\t%.5e\t%.5e\n", zone_doppler,doppler_factor,logdif);
+            // printf("IC_Stokes %.5e\t%.5e\t%.5e\n", IC_Stokes[h][19][0],
+            //                                         IC_Stokes[h][19][1],
+            //                                         IC_Stokes[h][19][2]);
 
             for (n=0; n<ARRAY_SIZE; n++){
                 // Might want zone_doppler ^ 3 for a continuous jet
                 if (n-binshiftIC >= 0 && n-binshiftIC < ARRAY_SIZE){
-                    IC_StokesTotal[n][0] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
-                    IC_StokesTotal[n][1] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
-                    IC_StokesTotal[n][2] += gsl_vector_get(IC_Stokes[h][2], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n + 0*ARRAY_SIZE] += IC_Stokes[h][n-binshiftIC][0] * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n + 1*ARRAY_SIZE] += IC_Stokes[h][n-binshiftIC][1] * pow(zone_doppler,4) * dx;
+                    IC_StokesTotal[n + 2*ARRAY_SIZE] += IC_Stokes[h][n-binshiftIC][2] * pow(zone_doppler,4) * dx;
 
-                    IC_StokesZTotal[h][n][0] += gsl_vector_get(IC_Stokes[h][0], n-binshiftIC) * pow(zone_doppler,4) * dx;
-                    IC_StokesZTotal[h][n][1] += gsl_vector_get(IC_Stokes[h][1], n-binshiftIC) * pow(zone_doppler,4) * dx;
-                    IC_StokesZTotal[h][n][2] += gsl_vector_get(IC_Stokes[h][2], n-binshiftIC) * pow(zone_doppler,4) * dx;
+                    // IC_StokesZTotal[h][n][0] += IC_Stokes[h][n-binshiftIC][0] * pow(zone_doppler,4) * dx;
+                    // IC_StokesZTotal[h][n][1] += IC_Stokes[h][n-binshiftIC][1] * pow(zone_doppler,4) * dx;
+                    // IC_StokesZTotal[h][n][2] += IC_Stokes[h][n-binshiftIC][2] * pow(zone_doppler,4) * dx;
                     
                 }
                 if (n-binshiftS >= 0 && n-binshiftS < ARRAY_SIZE){
-                    opacity_factor = (1 - exp(-k[n-binshiftS]*dx)) / k[n-binshiftS]; //tends to dx as opacity goes to zero (optically thin)
-                    if (opacity_factor > 0.9*dx || isnan(opacity_factor) || opacity_factor == 0.0) {
-                       opacity_factor = dx;
-                    }
+                    S_StokesTotal[n + 0*ARRAY_SIZE] += S_Stokes[h][n-binshiftS][0] * pow(zone_doppler,4) * dx; 
+                    S_StokesTotal[n + 1*ARRAY_SIZE] += S_Stokes[h][n-binshiftS][1] * pow(zone_doppler,4) * dx; 
+                    S_StokesTotal[n + 2*ARRAY_SIZE] += S_Stokes[h][n-binshiftS][2] * pow(zone_doppler,4) * dx; 
 
-                    S_StokesTotal_Sec[nSteps][n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
-                    S_StokesTotal_Sec[nSteps][n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
-                    S_StokesTotal_Sec[nSteps][n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
-
-                    S_StokesZTotal[h][n][0] += S_Stokes[h][0][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
-                    S_StokesZTotal[h][n][1] += S_Stokes[h][1][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
-                    S_StokesZTotal[h][n][2] += S_Stokes[h][2][n-binshiftS] * pow(zone_doppler,4) * opacity_factor; //* dx;
+                    // S_StokesZTotal[h][n][0] += S_Stokes[h][n-binshiftS][0] * pow(zone_doppler,4) * dx; 
+                    // S_StokesZTotal[h][n][1] += S_Stokes[h][n-binshiftS][1] * pow(zone_doppler,4) * dx; 
+                    // S_StokesZTotal[h][n][2] += S_Stokes[h][n-binshiftS][2] * pow(zone_doppler,4) * dx; 
                 }
             }
         }
@@ -1191,23 +1077,18 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         R_prev = R;
         R = R_new(R0, deg2rad(theta_open_p), x);
 
-
         //correct synchrotron for full length + IC
         for (i=0; i<ARRAY_SIZE; i++)
         {
             Ps_per_m[i] *= dx;
             //Ps_per_m_IC[i] *= dx;
-            opacity_factor = (1 - exp(-k[i]*dx)) / k[i]; //tends to dx as opacity goes to zero (optically thin)
-            if (opacity_factor > 0.9*dx || isnan(opacity_factor) || opacity_factor == 0.0) {
-               opacity_factor = dx;
-            }
-            Sync_losses[i] *= opacity_factor; //low energy synchrotron losses now affected by opacity
+            Sync_losses[i] *= dx;
             IC_losses[i] *= dx;              //ALP
             P_perp[i] *= dx;  //polarisation powers
             P_para[i] *= dx;
-            P_perpIC[i] *= dx;
-            P_paraIC[i] *= dx;
-            P_X[i] *= dx;
+            // P_perpIC[i] *= dx;
+            // P_paraIC[i] *= dx;
+            // P_X[i] *= dx;
 	    //fprintf(Xfile,"\t%.5e", P_X[i] * f_pol[i]);
             //fprintf(Proj_Bfile,"\t%.5e",Proj_theta_B);
 
@@ -1251,12 +1132,12 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
         cleanpop(Ne_e, ARRAY_SIZE, 10.0); //any elements with Ne_e<10 set to zero to avoid nans
         cleanpop(Ne_intermed, ARRAY_SIZE, 10.0); //any elements with Ne_e<10 set to zero to avoid nans
                 
-	    B_prev = B;//need to update dfreqs
+        B_prev = B;//need to update dfreqs
         B = get_newB(B0, R0, R);
         eps = epsilon(B);
 
         // reset values to 0 for the next section x step
-	    u_rad = 0.0;
+        u_rad = 0.0;
         for (i=0; i<ARRAY_SIZE; i++)
         {
             f_c[i] = f_crit(gamma_e[i], B);
@@ -1265,45 +1146,37 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
             dfreqs[i] = f_em_max[i]-f_em_min[i];
             A_elecs[i] = A_orig*(Ne_e[i]/Ne_orig[i]);
             dN_dE[i] = electron_PL(A_elecs[i], alpha, E_elecs[i]*Qe, E_max*Qe);
-            k_array[nSteps][i] = k[i]; //opacity of section for later integral
             P_para[i] = 0.0;//Reset
             P_perp[i] = 0.0;
-            P_paraIC[i] = 0.0;
-            P_perpIC[i] = 0.0;
-            P_X[i] = 0.0;
+            // P_paraIC[i] = 0.0;
+            // P_perpIC[i] = 0.0;
+            // P_X[i] = 0.0;
             Ps_per_mIC_elec[i] = 0.0;
             Ps_per_m_elec[i] = 0.0;
-            Ps_per_m_test[i] = 0.0;
 
         }
 
         memset(S_Stokes, 0, sizeof(S_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3); //reset these to 0 for next section
-        //memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
-        for (h=0; h<N_BLOCKS; h++){
-            gsl_vector_set_zero(IC_Stokes[h][0]);
-            gsl_vector_set_zero(IC_Stokes[h][1]);
-            gsl_vector_set_zero(IC_Stokes[h][2]);
-        }
+        memset(IC_Stokes, 0, sizeof(IC_Stokes[0][0][0])* N_BLOCKS * ARRAY_SIZE * 3);
         memset(urad_array_perp, 0, sizeof(urad_array_perp[0][0])* N_BLOCKS * ARRAY_SIZE); //reset these to 0 for next section
         memset(urad_array_para, 0, sizeof(urad_array_para[0][0])* N_BLOCKS * ARRAY_SIZE);
         memset(dfactor_perp, 0, sizeof(dfactor_perp[0][0][0])* N_BLOCKS * N_BLOCKS * ARRAY_SIZE); //reset these to 0 for next section
         memset(dfactor_para, 0, sizeof(dfactor_para[0][0][0])* N_BLOCKS * N_BLOCKS * ARRAY_SIZE);
 
-        //Opacity Stuff for integral after while loop
-        dx_op_array[nSteps] = dx;
-
-
         nSteps+=1; //allows the number of jet sections to be determined
-        printf("nStep, dx, x, B, R: %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
+        // printf("nStep, dx, x, B, R %.5d\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n", nSteps, dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
 
         //save data needed at every jet section to solve line of sight opacity
-        fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
-        
+        // fprintf(basicdata, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e \n", dx, x, B, R, S_StokesTotal[14][0] * f_pol[14], IC_StokesTotal[13][0] * f_pol_IC[13]);
+        PRINT("nStep: %d\n", nSteps);
+        PRINT("x: %.5e\n", x);
+        PRINT("B: %.5e\n", B);
+        PRINT("R: %.5e\n", R);
         /************************************/
         //Timing: to understand accurate cluster submission
-        time_end = clock();
-        time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
-        printf("Time spent this section: %.3f mins \n", time_spent/60);
+        // time_end = clock();
+        // time_spent = (double)(time_end - time_begin) / CLOCKS_PER_SEC;
+        // printf("Time spent this section: %.3f mins \n", time_spent/60);
         /************************************/
 
         if (nSteps == breakstep) {
@@ -1315,102 +1188,93 @@ int main(int argc,char* argv[]) //argc is integer number of arguments passed, ar
     free(R_array);
     free(dx_array); //free all dynamically allocated memory
     for (i=0; i<buffer_size; i++) {
-	free(Pperp_array[i]);
+        free(Pperp_array[i]);
         free(Ppara_array[i]);
     }
     free(Pperp_array);
     free(Ppara_array);
 
-    //Opacity integral calculation:
-    for (n=0; n<breakstep; n++){
-        for (l=0; l<ARRAY_SIZE; l++){
-            //printf("K %d\t%d\t%.5e\n", n, l, k_array[n][l]);
-            for (i=0; i<breakstep; i++){
-                if (i > n){
-                    tau[n][l] += k_array[i][l] * dx_op_array[i] / cos(deg2rad(theta_obs));
-                }
-            }
-        }
-    }
-
-    for (i=0; i<breakstep; i++){
-        for (l=0; l<ARRAY_SIZE; l++){
-            S_StokesTotal[l][0] += S_StokesTotal_Sec[i][l][0] * exp(-tau[i][l]); // not quite right since binshifts, but approx ok for purposes of fit
-            S_StokesTotal[l][1] += S_StokesTotal_Sec[i][l][1] * exp(-tau[i][l]); //should address binshifts properly tho as it affects polarization of mm and below
-            S_StokesTotal[l][2] += S_StokesTotal_Sec[i][l][2] * exp(-tau[i][l]);
-            //printf("TAU %d\t%d\t%.5e\n", i, l, tau[i][l]);
-        }
-    }
-
-
-    double newbins[ARRAY_SIZE]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
-    for (n=0; n<ARRAY_SIZE; n++){
-        ICS_StokesTotal[n][0] = S_StokesTotal[n][0] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][0];
-        ICS_StokesTotal[n][1] = S_StokesTotal[n][1] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][1]; // ICS uses IC binning
-        ICS_StokesTotal[n][2] = S_StokesTotal[n][2] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][2];
-    }
+    // double newbins[ARRAY_SIZE]; // rebinning for IC to fit into synchrotron bins, choose closest synchrotron flux to be added to IC flux
+    // for (n=0; n<ARRAY_SIZE; n++){
+    //     ICS_StokesTotal[n][0] = S_StokesTotal[n][0] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][0];
+    //     ICS_StokesTotal[n][1] = S_StokesTotal[n][1] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][1]; // ICS uses IC binning
+    //     ICS_StokesTotal[n][2] = S_StokesTotal[n][2] + IC_StokesTotal[findClosest(f_pol_IC, f_pol[n], ARRAY_SIZE)][2];
+    // }
 
     for (n=0; n<ARRAY_SIZE; n++){ //multiplying F(nu) by nu to get nuF(nu), to plot Power instead: switch f_pol by dfreqs_pol, however this will require a different treatment of ICS_total
-        ICS_StokesTotal[n][0] *= f_pol[n];
-        ICS_StokesTotal[n][1] *= f_pol[n];
-        ICS_StokesTotal[n][2] *= f_pol[n];
+        // ICS_StokesTotal[n][0] *= f_pol[n];
+        // ICS_StokesTotal[n][1] *= f_pol[n];
+        // ICS_StokesTotal[n][2] *= f_pol[n];
 
-        IC_StokesTotal[n][0] *= f_pol_IC[n];
-        IC_StokesTotal[n][1] *= f_pol_IC[n];
-        IC_StokesTotal[n][2] *= f_pol_IC[n];
+        IC_StokesTotal[n + 0*ARRAY_SIZE] *= f_pol_IC[n];
+        IC_StokesTotal[n + 1*ARRAY_SIZE] *= f_pol_IC[n];
+        IC_StokesTotal[n + 2*ARRAY_SIZE] *= f_pol_IC[n];
 
-        S_StokesTotal[n][0] *= f_pol[n];
-        S_StokesTotal[n][1] *= f_pol[n];
-        S_StokesTotal[n][2] *= f_pol[n];
-
-        for (h=0; h<N_BLOCKS; h++){
-             IC_StokesZTotal[h][n][0] *= f_pol_IC[n];
-             IC_StokesZTotal[h][n][1] *= f_pol_IC[n];
-             IC_StokesZTotal[h][n][2] *= f_pol_IC[n];
-
-             S_StokesZTotal[h][n][0] *= f_pol[n];
-             S_StokesZTotal[h][n][1] *= f_pol[n];
-             S_StokesZTotal[h][n][2] *= f_pol[n];
-        }
+        S_StokesTotal[n + 0*ARRAY_SIZE] *= f_pol[n];
+        S_StokesTotal[n + 1*ARRAY_SIZE] *= f_pol[n];
+        S_StokesTotal[n + 2*ARRAY_SIZE] *= f_pol[n];
     }
+    //     for (h=0; h<N_BLOCKS; h++){
+    //          IC_StokesZTotal[h][n][0] *= f_pol_IC[n];
+    //          IC_StokesZTotal[h][n][1] *= f_pol_IC[n];
+    //          IC_StokesZTotal[h][n][2] *= f_pol_IC[n];
 
-    for (i = 0; i < N_BLOCKS; i++)
-    {
-      for (m = 0; m < ARRAY_SIZE; m++)
-      {
-        for (n = 0; n < 3; n++)
-        {
-          fprintf(IC_Z, "%f ", IC_StokesZTotal[i][m][n]);
-          fprintf(S_Z, "%f ", S_StokesZTotal[i][m][n]);
-        }
-        fprintf(IC_Z, "\n");
-        fprintf(S_Z, "\n");
-      }
-      fprintf(IC_Z, "\n");
-      fprintf(S_Z, "\n");
-    }
+    //          S_StokesZTotal[h][n][0] *= f_pol[n];
+    //          S_StokesZTotal[h][n][1] *= f_pol[n];
+    //          S_StokesZTotal[h][n][2] *= f_pol[n];
+    //     }
+    // }
+
+    // for (i = 0; i < N_BLOCKS; i++)
+    // {
+    //   for (m = 0; m < ARRAY_SIZE; m++)
+    //   {
+    //     for (n = 0; n < 3; n++)
+    //     {
+    //       fprintf(IC_Z, "%f ", IC_StokesZTotal[i][m][n]);
+    //       fprintf(S_Z, "%f ", S_StokesZTotal[i][m][n]);
+    //     }
+    //     fprintf(IC_Z, "\n");
+    //     fprintf(S_Z, "\n");
+    //   }
+    //   fprintf(IC_Z, "\n");
+    //   fprintf(S_Z, "\n");
+    // }
 
 
-    for (n=0; n<ARRAY_SIZE; n++){
-            IC_Pi[n] = sqrt(IC_StokesTotal[n][1]*IC_StokesTotal[n][1] + IC_StokesTotal[n][2]*IC_StokesTotal[n][2]) / IC_StokesTotal[n][0];
-            S_Pi[n] = sqrt(S_StokesTotal[n][1]*S_StokesTotal[n][1] + S_StokesTotal[n][2]*S_StokesTotal[n][2]) / S_StokesTotal[n][0];
-            ICS_Pi[n] = sqrt(ICS_StokesTotal[n][1]*ICS_StokesTotal[n][1] + ICS_StokesTotal[n][2]*ICS_StokesTotal[n][2]) / ICS_StokesTotal[n][0];
+    // for (n=0; n<ARRAY_SIZE; n++){
+    //         IC_Pi[n] = sqrt(IC_StokesTotal[n][1]*IC_StokesTotal[n][1] + IC_StokesTotal[n][2]*IC_StokesTotal[n][2]) / IC_StokesTotal[n][0];
+    //         S_Pi[n] = sqrt(S_StokesTotal[n][1]*S_StokesTotal[n][1] + S_StokesTotal[n][2]*S_StokesTotal[n][2]) / S_StokesTotal[n][0];
+    //         ICS_Pi[n] = sqrt(ICS_StokesTotal[n][1]*ICS_StokesTotal[n][1] + ICS_StokesTotal[n][2]*ICS_StokesTotal[n][2]) / ICS_StokesTotal[n][0];
 
-            IC_PA[n] = 0.5*atan2(IC_StokesTotal[n][2],IC_StokesTotal[n][1]);
-            S_PA[n] = 0.5*atan2(S_StokesTotal[n][2],S_StokesTotal[n][1]);
-            ICS_PA[n] = 0.5*atan2(ICS_StokesTotal[n][2],ICS_StokesTotal[n][1]);
+    //         IC_PA[n] = 0.5*atan2(IC_StokesTotal[n][2],IC_StokesTotal[n][1]);
+    //         S_PA[n] = 0.5*atan2(S_StokesTotal[n][2],S_StokesTotal[n][1]);
+    //         ICS_PA[n] = 0.5*atan2(ICS_StokesTotal[n][2],ICS_StokesTotal[n][1]);
 
-            IC_P[n] = IC_StokesTotal[n][0];
-            S_P[n] = S_StokesTotal[n][0];
-            ICS_P[n] = ICS_StokesTotal[n][0];
+    //         IC_P[n] = IC_StokesTotal[n][0];
+    //         S_P[n] = S_StokesTotal[n][0];
+    //         ICS_P[n] = ICS_StokesTotal[n][0];
 
-            fprintf(PI, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",S_Pi[n],S_PA[n],
-                   S_P[n],IC_Pi[n],IC_PA[n],IC_P[n],ICS_Pi[n],ICS_PA[n],ICS_P[n]);
+    //         fprintf(PI, "\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\t%.5e\n",S_Pi[n],S_PA[n],
+    //                S_P[n],IC_Pi[n],IC_PA[n],IC_P[n],ICS_Pi[n],ICS_PA[n],ICS_P[n]);
 
-    }
+    // }
 
-    printf("The jet was divided into %d %s \n", nSteps, "section(s).");
+    // printf("The jet was divided into %d %s \n", nSteps, "section(s).");
     return 0;
 }
 
 
+//executable test for debugging
+int main(){
+    double argv[] = {pow(10,38.436129), pow(10,10.12309571), 1.7230574,  39.97781039,
+               15.28831413, pow(10,-4.39991182), 3.4409881, 1.07342862, pow(10,5.76709691)};
+    int argblocks[] = {1, 0, 42, 0};
+    double IC_StokesTotal[50] = {0};
+    double S_StokesTotal[50] = {0};
+    double f_pol_IC[50] = {0}; 
+    double f_pol[50] = {0};
+
+    int res = fullmodel(argv, argblocks, IC_StokesTotal, S_StokesTotal, f_pol_IC, f_pol);
+    return res;
+} 
