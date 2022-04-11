@@ -884,7 +884,7 @@ int jetmodel(double *argv, int *argblocks, double *IC_StokesTotal, double *S_Sto
             double adjust = 1.;
             if (argblocks[3] == 1)
             {
-                adjust = pow(B_2[marker_list[h]][h],2) / 0.33333;
+                adjust = pow(B_Z[marker_list[h]][h],2) / 0.33333;
             }
             binshiftIC = (int)round(log10(zone_doppler / doppler_factor) / logdif); //the number of bins one moves across (relative to shift of bins which already takes place)
             logdif = log10(f_pol[1]) - log10(f_pol[0]);

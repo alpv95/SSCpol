@@ -109,16 +109,22 @@ class SSC_Fitter(object):
         return loss, sync, ic
 
     def get_checkpoint(self):
+        alt_N = 'data/checkpoints/'+str(self.blazar)+'_19_g'+str(self.rand_gamma)+'.p'
         if exists(self.filename):
             print("Checkpoint found, loading...")
             return pickle.load(open(self.filename, 'rb'))
+        elif exists(alt_N):
+            print("Alternative N checkpoint found, loading...")
+            mu, _ = pickle.load(open(alt_N, 'rb'))
+            #to make sure not too converged.
+            return mu, np.diag((np.array(self.bounds)[:,1] - np.array(self.bounds)[:,0]) / 50)
         else:
             return self.x0, np.diag((np.array(self.bounds)[:,1] - np.array(self.bounds)[:,0]) / 50)
     
     def save_checkpoint(self, mu, Sigma):
         pickle.dump((mu, Sigma), open(self.filename, 'wb'))
 
-    def cross_entropy_method(self, n_samples=60, n_elite=15, max_k=12,):
+    def cross_entropy_method(self, n_samples=60, n_elite=15, max_k=6,):
         bounds = np.array(self.bounds)
         current_mean_likelihood = 1000
         mu, Sigma = self.get_checkpoint()
