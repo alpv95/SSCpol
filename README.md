@@ -1,33 +1,51 @@
-# Synchrotron and Synchrotron-Self Compton (SSC) Polarization of Blazars
-Codebase to calculate the observed SED and polarization of relativistic conical jet of electrons and positrons initially in equipartition following a power law with an exponential cutoff energy. Developed for [Peirson & Romani (2018)](https://iopscience.iop.org/article/10.3847/1538-4357/aad69d/meta) & [Peirson & Romani (2019)]; model inspired partly by  [Potter & Cotter (2012)](https://academic.oup.com/mnras/article/423/1/756/1747479) & [TEMZ](https://www.bu.edu/blazars/temz.html).
-The free parameters are: jet power [W], initial electron power law index, the electron exponential cutoff energy [J],  initial magnetic flux density at jet base [T], bulk Lorentz factor, observation angle [rad], jet opening angle [rad] and the number of random B-field zones in one jet cross section (either 1,7,19,37,61,91,127). Isotropic random B-fields are generated using the Mersenne twister algorithm (cite). The SSC calculation is parallelized using **OpenMP**.
-# SSC Fast
-Sped up version of SSC_final using the magic of linear algebra. Requires GSL C library (can be download and installation instructions here: https://www.gnu.org/software/gsl/). 
+# SSCpol
+Python + C codebase to calculate the observed steady-state SED and polarization of a relativistic conical jet of electrons & positrons. Synchrotron and Synchrotron-Self Compton (SSC) Polarization are included.
 
-##Shared library (.so) build
-gcc -fPIC -shared func_model.c mtwister.c mtwister.h jet_fns.c jet_fns.h -lgsl -lgslblas -lm
+Developed for [Peirson & Romani (2018)](https://iopscience.iop.org/article/10.3847/1538-4357/aad69d/meta), [Peirson & Romani (2019)](https://iopscience.iop.org/article/10.3847/1538-4357/ab46b1/meta) & [Peirson, Liodakis & Romani (2022)]; model inspired partly by  [Potter & Cotter (2012)](https://academic.oup.com/mnras/article/423/1/756/1747479) & [TEMZ](https://www.bu.edu/blazars/temz.html).
 
-# Synchrotron and SSC Polarization of Blazars
-Python and C code to calculate the SED and polarization of relativistic conical jet of electrons and positrons initially in equipartition with power law $\alpha$ and an exponential cutoff. Model described in apj1 and apj2. The free parameters are: jet power  $W_j$, initial electron power law $\alpha$, the electron energy exponential cutoff $E_{max}$,  initial magnetic flux density $B_0$, relativisic bulk gamma $\Gamma_{bulk}$, observation angle $\theta_{obs}$, jet opening angle (jet frame) $\theta_{op}$ and the number of random B-field zones in one jet cross section $n_blocks$ (1,7,19,37,61,91,127). Isotropic random B-fields are generated using the Mersenne twister algorithm.
+Model free parameters are: 
+* jet power [W], 
+* initial electron power law index, 
+* the electron exponential cutoff energy [eV], 
+* initial magnetic flux density at jet base [T], 
+* bulk Lorentz factor, 
+* observation angle [deg], 
+* jet opening angle [deg], 
+* initial equipartition fraction, 
+* number of random B-field zones in one jet cross section (either 1,7,19,37,61,91,127). 
 
-## To run
-jet_model.c contains the full simulation, outputting a number of text files with the results: `basicdata.txt` (jet *dx*, *x*, *B* and *R* at each simulation step), `keyparams.txt` (jet initial parameters), `pi.txt` (polarization fraction, EVPA and observed power results for synchrotron, SSC and joint) and `IC_Z.txt` / `S_Z.txt` (Stokes parameters for individual jet B-field zones).
+# Requirements
+Python requirements noted in `requirements.txt`.
+C requirements are noted in `Makefile`. (gcc, GSL, CBlas, see https://www.gnu.org/software/gsl/)
 
-`runplotSED.py` acts as a wrapper for jet_model.c and allows one to run and plot the results. Use `--help` to see options and flags. For example to run a full sync+SSC jet model with 7 B-field blocks for 100 steps at an observation angle of 1.5 deg:
-``` 
-python runplotSED.py 1.5 -ssc --nblocks 7 --nsteps 100
+# Installation
+git clone the repository and run `make` in `src/` to build the C code.
+
+# Usage
+`python3 -u fit.py` to run the model fits to Blazar spectra.
+`plot_results.ipynb` to visualize results and reproduce plots from [Peirson, Liodakis & Romani (2022)].
+`sscpol/jet_fns.py: run_ssc()` for single model evaluation.
+
+# Attribution
 ```
-Jet parameters other than the observation angle can be modified in `jet_model.c` directly. The folder `utils` contains a number of plotting and data analysis functions to display the results of the model.
-
-## Requirements
-Python 3 with and gcc are the only requirements (gcc version requires OpenMP support if parallelization is desired).
-
+    @article{peirson_polarization_2019,
+	title = {The {Polarization} {Behavior} of {Relativistic} {Synchrotron} {Self}-{Compton} {Jets}},
+	volume = {885},
+	issn = {0004-637X},
+	url = {https://doi.org/10.3847%2F1538-4357%2Fab46b1},
+	doi = {10.3847/1538-4357/ab46b1},
+	language = {en},
+	number = {1},
+	urldate = {2020-03-28},
+	journal = {ApJ},
+	author = {Peirson, A. L. and Romani, Roger W.},
+	month = nov,
+	year = {2019},
+	pages = {76},
+}
+```
 
 Basic algorithm:
 -----
 Numbers in paretheses refer to equations in [Peirson & Romani (2019)].
 ![Flow chart outlining the basic algorithm](FlowChart.jpg?raw=true "Title")
-
-
-
-
