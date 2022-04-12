@@ -22,6 +22,7 @@ C requirements are noted in `Makefile`. (gcc, GSL, CBlas, see https://www.gnu.or
 git clone the repository and run `make` in `src/` to build the C code.
 
 # Usage
+See `example.ipynb` for common usage.
 `python3 -u fit.py` to run the model fits to Blazar spectra.
 `plot_results.ipynb` to visualize results and reproduce plots from [Peirson, Liodakis & Romani (2022)].
 `sscpol/jet_fns.py: run_ssc()` for single model evaluation.
