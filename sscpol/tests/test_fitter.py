@@ -32,7 +32,7 @@ def test_cross_entropy():
     Input: [W_j, E_max, alpha, theta_open_p, gamma_bulk, B0, theta_obs, A_eq, E_min]
     """
     fitter = SSC_Fitter("J2011flare", nprocs=4)
-    mean_likelihood, mu, Sigma = fitter.cross_entropy_method(n_samples=12, n_elite=3, max_k=1,)
+    mean_likelihood, mu, Sigma = fitter.cross_entropy_method(n_samples=8, n_elite=3, max_k=1,)
     assert not np.isnan(mean_likelihood)
     assert mu.shape == (9,)
     assert Sigma.shape == (9,9)
@@ -44,7 +44,7 @@ def test_cross_entropy_gamma_rand():
     Input: [W_j, E_max, alpha, theta_open_p, gamma_bulk, B0, theta_obs, A_eq, E_min]
     """
     fitter = SSC_Fitter("S5flare", nprocs=4, rand_gamma=1)
-    mean_likelihood, mu, Sigma = fitter.cross_entropy_method(n_samples=12, n_elite=3, max_k=1,)
+    mean_likelihood, mu, Sigma = fitter.cross_entropy_method(n_samples=8, n_elite=3, max_k=1,)
     assert not np.isnan(mean_likelihood)
     assert mu.shape == (9,)
     assert Sigma.shape == (9,9)

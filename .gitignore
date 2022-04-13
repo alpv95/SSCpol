@@ -1,4 +1,5 @@
 *.out
 *.so
+report.*
 .ipynb_checkpoints
 __pycache__
