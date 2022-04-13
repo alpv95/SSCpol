@@ -1,5 +1,4 @@
 import numpy as np
-import unittest
 from sscpol.jet_fns import *
 
 # def test_run_ssc_full():

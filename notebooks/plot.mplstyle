@@ -1,0 +1,34 @@
+savefig.dpi          :  300
+figure.dpi           :  150
+path.simplify        :  True
+figure.figsize       :  4.0, 4.0
+font.family          :  serif
+mathtext.fontset     :  custom
+errorbar.capsize     :  0
+lines.linewidth      :  1
+axes.linewidth       :  0.9
+axes.labelweight     :  bold
+axes.prop_cycle      :  cycler('color', 'kkkk') + cycler(linestyle=['-', '--', ':', '-.']) 
+font.weight          :  bold
+font.style           :  normal
+font.variant         :  small-caps
+xtick.major.size     :  6
+ytick.major.size     :  6 
+xtick.minor.size     :  3   
+ytick.minor.size     :  3
+xtick.minor.visible  :  True
+ytick.minor.visible  :  True
+xtick.direction      :  in
+ytick.direction      :  in 
+xtick.top            :  True
+ytick.right          :  True 
+xtick.major.width    :  0.9
+ytick.major.width    :  0.9
+xtick.minor.width    :  0.9
+ytick.minor.width    :  0.9
+lines.markeredgewidth:  1
+legend.numpoints     :  1
+legend.frameon       :  False
+legend.handletextpad :  0.3
+hist.bins            :  50
+lines.color          :  k

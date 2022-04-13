@@ -15,17 +15,17 @@ Model free parameters are:
 * number of random B-field zones in one jet cross section (either 1,7,19,37,61,91,127). 
 
 # Requirements
-Python requirements noted in `requirements.txt`.
+Python requirements noted in `requirements.txt` and automatically installed when running installation.
 C requirements are noted in `Makefile`. (gcc, GSL, CBlas, see https://www.gnu.org/software/gsl/)
 
 # Installation
-git clone the repository and run `make` in `src/` to build the C code.
+pip3 install -e . 
 
 # Usage
-See `example.ipynb` for common usage.
-`python3 -u fit.py` to run the model fits to Blazar spectra.
-`plot_results.ipynb` to visualize results and reproduce plots from [Peirson, Liodakis & Romani (2022)].
-`sscpol/jet_fns.py: run_ssc()` for single model evaluation.
+See `notebooks/example.ipynb` for common usage.
+`python3 -u fit.py` to run the model fits to Blazar spectra. See `python3 fit.py -h`
+`notebooks/plot_results.ipynb` to visualize results and reproduce plots from [Peirson, Liodakis & Romani (2022)].
+`from sscpol.jet_fns import run_ssc` for single model evaluation.
 
 # Attribution
 ```

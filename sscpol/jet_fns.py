@@ -1,8 +1,11 @@
 import numpy as np
 import ctypes
+import os
 from numpy.ctypeslib import ndpointer
 
-_model = ctypes.CDLL('lib/jetmodel.so')
+_model = ctypes.CDLL(os.path.join(os.path.dirname(__file__), 
+                    [f for f in os.listdir(os.path.dirname(__file__) ) 
+                        if f.startswith("func_model")][0]))
 _model.jetmodel.argtypes = [ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
                             ndpointer(ctypes.c_int, flags="C_CONTIGUOUS"),
                           ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -10,7 +13,7 @@ _model.jetmodel.argtypes = [ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
                          ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
                          ndpointer(ctypes.c_double, flags="C_CONTIGUOUS")]
 
-_fullmodel = ctypes.CDLL('lib/fullmodel.so')
+_fullmodel = ctypes.CDLL(os.path.join(os.path.dirname(__file__),'../lib/fullmodel.so'))
 _fullmodel.fullmodel.argtypes = [ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
                             ndpointer(ctypes.c_int, flags="C_CONTIGUOUS"),
                           ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
