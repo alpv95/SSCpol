@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/105955957.svg)](https://zenodo.org/badge/latestdoi/105955957)
+
 # SSCpol
 Python + C codebase to calculate the observed steady-state SED and polarization of a relativistic conical jet of electrons & positrons. Synchrotron and Synchrotron-Self Compton (SSC) Polarization are included.
 
